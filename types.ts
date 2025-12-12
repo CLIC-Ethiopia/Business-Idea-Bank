@@ -14,6 +14,14 @@ export interface BusinessIdea {
   potentialRevenue: string;
 }
 
+export interface BusinessDetails {
+  targetAudience: string;
+  operationalRequirements: string[];
+  pros: string[];
+  cons: string[];
+  marketingQuickTip: string;
+}
+
 export interface BusinessCanvas {
   keyPartners: string[];
   keyActivities: string[];
@@ -44,3 +52,5 @@ export enum AppState {
   LOADING_CANVAS,
   VIEW_CANVAS
 }
+
+export type Language = 'en' | 'am';

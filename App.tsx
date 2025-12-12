@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { INDUSTRIES } from './constants';
-import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, LoadingScan } from './components/NeonUI';
-import { generateIdeas, generateCanvas, generatePersonalizedIdeas } from './services/geminiService';
-import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile } from './types';
+import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, LoadingScan, NeonModal } from './components/NeonUI';
+import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails } from './services/geminiService';
+import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails } from './types';
+import { TRANSLATIONS } from './locales';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -17,13 +18,25 @@ const UserIcon = () => (
   </svg>
 );
 
+const GlobeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
 const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>(AppState.SELECT_INDUSTRY);
+  const [language, setLanguage] = useState<Language>('en');
   const [selectedIndustry, setSelectedIndustry] = useState<Industry | null>(null);
   const [ideas, setIdeas] = useState<BusinessIdea[]>([]);
   const [selectedIdea, setSelectedIdea] = useState<BusinessIdea | null>(null);
   const [canvas, setCanvas] = useState<BusinessCanvas | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  // Details Modal State
+  const [detailIdea, setDetailIdea] = useState<BusinessIdea | null>(null);
+  const [businessDetails, setBusinessDetails] = useState<BusinessDetails | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   // User Profile State
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -35,21 +48,28 @@ const App: React.FC = () => {
     timeCommitment: 'Part-time'
   });
 
+  const t = TRANSLATIONS[language];
+
+  const toggleLanguage = () => {
+    setLanguage(prev => prev === 'en' ? 'am' : 'en');
+  };
+
   const handleIndustrySelect = async (industry: Industry) => {
     setSelectedIndustry(industry);
     setAppState(AppState.LOADING_IDEAS);
     setError(null);
     try {
-      const generatedIdeas = await generateIdeas(industry.name);
+      const industryName = t.industries[industry.id] || industry.name;
+      const generatedIdeas = await generateIdeas(industryName, language);
       if (generatedIdeas.length === 0) {
-        setError("AI could not generate ideas. Please try again.");
+        setError(t.errors.noIdeas);
         setAppState(AppState.SELECT_INDUSTRY);
       } else {
         setIdeas(generatedIdeas);
         setAppState(AppState.SELECT_IDEA);
       }
     } catch (e) {
-      setError("Connection error. Check API Key.");
+      setError(t.errors.connection);
       setAppState(AppState.SELECT_INDUSTRY);
     }
   };
@@ -59,37 +79,66 @@ const App: React.FC = () => {
     setAppState(AppState.LOADING_PROFILE_IDEAS);
     setError(null);
     try {
-      const generatedIdeas = await generatePersonalizedIdeas(userProfile);
+      const generatedIdeas = await generatePersonalizedIdeas(userProfile, language);
       if (generatedIdeas.length === 0) {
-        setError("AI could not generate ideas based on your profile. Try adjusting your inputs.");
+        setError(t.errors.noIdeas);
         setAppState(AppState.USER_PROFILE);
       } else {
         setIdeas(generatedIdeas);
         // We set selectedIndustry to null or a special value to indicate profile mode
-        setSelectedIndustry({ id: 'custom', name: 'Personalized Matches', icon: '🎯' });
+        setSelectedIndustry({ id: 'custom', name: t.industries['custom'], icon: '🎯' });
         setAppState(AppState.SELECT_IDEA);
       }
     } catch (e) {
-      setError("Connection error during profile analysis.");
+      setError(t.errors.connection);
       setAppState(AppState.USER_PROFILE);
     }
   };
 
+  const handleViewDetails = async (idea: BusinessIdea) => {
+    setDetailIdea(idea);
+    setBusinessDetails(null);
+    setLoadingDetails(true);
+    
+    try {
+      const details = await generateBusinessDetails(idea, language);
+      if (!details) {
+        // Fallback or error
+        setLoadingDetails(false);
+      } else {
+        setBusinessDetails(details);
+        setLoadingDetails(false);
+      }
+    } catch (e) {
+      console.error(e);
+      setLoadingDetails(false);
+    }
+  };
+
+  const closeDetails = () => {
+    setDetailIdea(null);
+    setBusinessDetails(null);
+    setLoadingDetails(false);
+  };
+
   const handleIdeaSelect = async (idea: BusinessIdea) => {
+    // Close details modal if open
+    if (detailIdea) closeDetails();
+    
     setSelectedIdea(idea);
     setAppState(AppState.LOADING_CANVAS);
     setError(null);
     try {
-      const generatedCanvas = await generateCanvas(idea);
+      const generatedCanvas = await generateCanvas(idea, language);
       if (!generatedCanvas) {
-        setError("Failed to generate canvas.");
+        setError(t.errors.canvasFail);
         setAppState(AppState.SELECT_IDEA);
       } else {
         setCanvas(generatedCanvas);
         setAppState(AppState.VIEW_CANVAS);
       }
     } catch (e) {
-      setError("Connection error.");
+      setError(t.errors.connection);
       setAppState(AppState.SELECT_IDEA);
     }
   };
@@ -111,21 +160,24 @@ const App: React.FC = () => {
   // Render Functions
   const renderIndustrySelection = () => (
     <div className="container mx-auto px-4 py-12">
-      <div className="flex justify-end mb-4">
+      <div className="flex justify-end mb-4 gap-4">
+        <NeonButton onClick={toggleLanguage} color="blue" className="flex items-center gap-2">
+          <GlobeIcon />
+          <span>{language === 'en' ? 'አማርኛ' : 'English'}</span>
+        </NeonButton>
         <NeonButton onClick={() => setAppState(AppState.USER_PROFILE)} color="green" className="flex items-center gap-2">
           <UserIcon />
-          <span>Build Entrepreneur Profile</span>
+          <span>{t.buildProfileBtn}</span>
         </NeonButton>
       </div>
 
       <div className="text-center mb-16">
         <h1 className="text-5xl md:text-7xl font-bold mb-4 tracking-tighter">
           <span className="text-white">NEON</span>
-          <span className="text-neon-blue">VENTURES</span>
+          <span className="text-neon-blue">{t.appTitle}</span>
         </h1>
         <p className="text-xl text-gray-400 font-light max-w-2xl mx-auto">
-          Select an industry sector to initialize the scanning protocol. 
-          We will locate machine-based business opportunities for you.
+          {t.appSubtitle}
         </p>
       </div>
 
@@ -141,10 +193,10 @@ const App: React.FC = () => {
               {ind.icon}
             </div>
             <h3 className="text-2xl font-bold text-white group-hover:text-neon-blue transition-colors">
-              {ind.name}
+              {t.industries[ind.id] || ind.name}
             </h3>
             <div className="mt-4 opacity-0 group-hover:opacity-100 transition-opacity text-neon-blue text-sm uppercase tracking-widest">
-              Scan Sector &rarr;
+              {t.scanBtn} &rarr;
             </div>
           </NeonCard>
         ))}
@@ -155,35 +207,39 @@ const App: React.FC = () => {
 
   const renderUserProfile = () => (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <div className="mb-8">
+      <div className="flex justify-between items-center mb-8">
         <button onClick={reset} className="flex items-center text-gray-400 hover:text-white transition-colors">
           <ArrowLeftIcon />
-          <span className="ml-2 uppercase tracking-widest">Back to Home</span>
+          <span className="ml-2 uppercase tracking-widest">{t.backToHome}</span>
         </button>
+        <NeonButton onClick={toggleLanguage} color="blue" className="flex items-center gap-2 py-2 px-4 text-xs">
+          <GlobeIcon />
+          <span>{language === 'en' ? 'አማርኛ' : 'English'}</span>
+        </NeonButton>
       </div>
 
       <div className="text-center mb-8">
-        <h2 className="text-3xl text-neon-green font-bold mb-2">ENTREPRENEUR PROFILE</h2>
-        <p className="text-gray-400">Calibrate the AI to match your capabilities with market opportunities.</p>
+        <h2 className="text-3xl text-neon-green font-bold mb-2">{t.profileTitle}</h2>
+        <p className="text-gray-400">{t.profileSubtitle}</p>
       </div>
 
       <NeonCard color="green" className="p-8" hoverEffect={false}>
         <form onSubmit={handleProfileSubmit}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <NeonInput 
-              label="Name" 
-              placeholder="Enter your alias" 
+              label={t.labels.name} 
+              placeholder={t.placeholders.name} 
               value={userProfile.name} 
               onChange={(e) => setUserProfile({...userProfile, name: e.target.value})}
               required
             />
             <NeonSelect 
-              label="Estimated Budget" 
+              label={t.labels.budget} 
               options={[
-                { value: 'Under $1,000', label: 'Under $1,000 (Micro)' },
-                { value: '$1,000 - $5,000', label: '$1,000 - $5,000 (Small)' },
-                { value: '$5,000 - $20,000', label: '$5,000 - $20,000 (Medium)' },
-                { value: '$20,000+', label: '$20,000+ (Large)' }
+                { value: 'Under $1,000', label: t.options.budget['Under $1,000'] },
+                { value: '$1,000 - $5,000', label: t.options.budget['$1,000 - $5,000'] },
+                { value: '$5,000 - $20,000', label: t.options.budget['$5,000 - $20,000'] },
+                { value: '$20,000+', label: t.options.budget['$20,000+'] }
               ]}
               value={userProfile.budget}
               onChange={(e) => setUserProfile({...userProfile, budget: e.target.value})}
@@ -191,36 +247,36 @@ const App: React.FC = () => {
           </div>
 
           <NeonTextArea 
-            label="Key Skills" 
-            placeholder="e.g. Graphic Design, Welding, Coding, Sales, Baking..." 
+            label={t.labels.skills} 
+            placeholder={t.placeholders.skills}
             value={userProfile.skills}
             onChange={(e) => setUserProfile({...userProfile, skills: e.target.value})}
             required
           />
 
           <NeonTextArea 
-            label="Interests & Hobbies" 
-            placeholder="e.g. 3D Printing, Outdoors, Fashion, Gaming..." 
+            label={t.labels.interests} 
+            placeholder={t.placeholders.interests}
             value={userProfile.interests}
             onChange={(e) => setUserProfile({...userProfile, interests: e.target.value})}
           />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <NeonSelect 
-              label="Risk Tolerance" 
+              label={t.labels.risk} 
               options={[
-                { value: 'Low', label: 'Low (Safe Bets)' },
-                { value: 'Medium', label: 'Medium (Calculated)' },
-                { value: 'High', label: 'High (Moonshots)' }
+                { value: 'Low', label: t.options.risk['Low'] },
+                { value: 'Medium', label: t.options.risk['Medium'] },
+                { value: 'High', label: t.options.risk['High'] }
               ]}
               value={userProfile.riskTolerance}
               onChange={(e) => setUserProfile({...userProfile, riskTolerance: e.target.value as any})}
             />
             <NeonSelect 
-              label="Time Commitment" 
+              label={t.labels.time} 
               options={[
-                { value: 'Part-time', label: 'Part-time / Side Hustle' },
-                { value: 'Full-time', label: 'Full-time' }
+                { value: 'Part-time', label: t.options.time['Part-time'] },
+                { value: 'Full-time', label: t.options.time['Full-time'] }
               ]}
               value={userProfile.timeCommitment}
               onChange={(e) => setUserProfile({...userProfile, timeCommitment: e.target.value as any})}
@@ -229,7 +285,7 @@ const App: React.FC = () => {
 
           <div className="mt-8">
             <NeonButton type="submit" fullWidth color="green">
-              Analyze & Generate Matches
+              {t.submitProfileBtn}
             </NeonButton>
           </div>
         </form>
@@ -244,11 +300,11 @@ const App: React.FC = () => {
       <div className="flex justify-between items-center mb-8">
         <button onClick={reset} className="flex items-center text-gray-400 hover:text-white transition-colors">
           <ArrowLeftIcon />
-          <span className="ml-2 uppercase tracking-widest">Back to Sectors</span>
+          <span className="ml-2 uppercase tracking-widest">{t.backToSectors}</span>
         </button>
         <div className="text-right">
-          <h2 className="text-neon-blue text-xl font-bold uppercase">{selectedIndustry?.name}</h2>
-          <p className="text-xs text-gray-500">Scan Complete: {ideas.length} Opportunities Found</p>
+          <h2 className="text-neon-blue text-xl font-bold uppercase">{selectedIndustry?.id === 'custom' ? t.industries['custom'] : (selectedIndustry ? t.industries[selectedIndustry.id] : '')}</h2>
+          <p className="text-xs text-gray-500">{t.scanComplete(ideas.length)}</p>
         </div>
       </div>
 
@@ -276,24 +332,87 @@ const App: React.FC = () => {
               {idea.description}
             </p>
 
-            <div className="border-t border-gray-800 pt-4 mt-auto">
-              <div className="flex justify-between items-end mb-4">
+            <div className="border-t border-gray-800 pt-4 mt-auto space-y-3">
+              <div className="flex justify-between items-end mb-2">
                 <div>
-                  <div className="text-xs text-gray-500 uppercase">Investment</div>
+                  <div className="text-xs text-gray-500 uppercase">{t.investment}</div>
                   <div className="text-neon-green font-bold">{idea.priceRange}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-500 uppercase">Potential</div>
+                  <div className="text-xs text-gray-500 uppercase">{t.potential}</div>
                   <div className="text-white font-bold">{idea.potentialRevenue}</div>
                 </div>
               </div>
-              <NeonButton fullWidth color="pink" onClick={() => handleIdeaSelect(idea)}>
-                Analyze Business Model
-              </NeonButton>
+              <div className="grid grid-cols-2 gap-2">
+                <NeonButton color="blue" onClick={() => handleViewDetails(idea)} className="text-xs py-2 px-2">
+                  {t.detailsBtn}
+                </NeonButton>
+                <NeonButton color="pink" onClick={() => handleIdeaSelect(idea)} className="text-xs py-2 px-2">
+                  {t.analyzeBtn}
+                </NeonButton>
+              </div>
             </div>
           </NeonCard>
         ))}
       </div>
+      
+      {/* Detail Modal */}
+      <NeonModal 
+        isOpen={!!detailIdea} 
+        onClose={closeDetails} 
+        title={detailIdea?.businessTitle}
+      >
+        {loadingDetails ? (
+           <div className="py-12">
+             <LoadingScan text={t.loading.details} />
+           </div>
+        ) : businessDetails ? (
+           <div className="space-y-6">
+              <div>
+                <h4 className="text-neon-blue font-bold uppercase mb-2 text-sm">{t.detailsSections.audience}</h4>
+                <p className="text-gray-300">{businessDetails.targetAudience}</p>
+              </div>
+
+              <div>
+                <h4 className="text-neon-purple font-bold uppercase mb-2 text-sm">{t.detailsSections.requirements}</h4>
+                <ul className="list-disc list-inside text-gray-300 space-y-1">
+                  {businessDetails.operationalRequirements.map((r, i) => <li key={i}>{r}</li>)}
+                </ul>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="bg-green-900/20 p-4 rounded border border-green-900">
+                    <h4 className="text-neon-green font-bold uppercase mb-2 text-sm">{t.detailsSections.pros}</h4>
+                    <ul className="space-y-1">
+                      {businessDetails.pros.map((p, i) => <li key={i} className="text-sm text-gray-300 flex items-start"><span className="text-neon-green mr-2">+</span>{p}</li>)}
+                    </ul>
+                 </div>
+                 <div className="bg-red-900/20 p-4 rounded border border-red-900">
+                    <h4 className="text-red-400 font-bold uppercase mb-2 text-sm">{t.detailsSections.cons}</h4>
+                     <ul className="space-y-1">
+                      {businessDetails.cons.map((c, i) => <li key={i} className="text-sm text-gray-300 flex items-start"><span className="text-red-400 mr-2">-</span>{c}</li>)}
+                    </ul>
+                 </div>
+              </div>
+
+              <div>
+                <h4 className="text-neon-pink font-bold uppercase mb-2 text-sm">{t.detailsSections.marketing}</h4>
+                <p className="text-gray-300 italic border-l-2 border-neon-pink pl-4">{businessDetails.marketingQuickTip}</p>
+              </div>
+
+              <div className="pt-4 border-t border-gray-700 flex justify-end gap-4">
+                 <button onClick={closeDetails} className="text-gray-400 hover:text-white uppercase text-sm font-bold tracking-wider px-4">
+                   {t.closeBtn}
+                 </button>
+                 <NeonButton color="pink" onClick={() => detailIdea && handleIdeaSelect(detailIdea)}>
+                   {t.analyzeBtn}
+                 </NeonButton>
+              </div>
+           </div>
+        ) : (
+          <div className="text-red-500">{t.errors.detailsFail}</div>
+        )}
+      </NeonModal>
     </div>
   );
 
@@ -323,7 +442,7 @@ const App: React.FC = () => {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 shrink-0">
           <button onClick={goBackToIdeas} className="flex items-center text-gray-400 hover:text-white transition-colors mb-4 md:mb-0">
             <ArrowLeftIcon />
-            <span className="ml-2 uppercase tracking-widest">Back to Ideas</span>
+            <span className="ml-2 uppercase tracking-widest">{t.backToIdeas}</span>
           </button>
           <div className="text-right">
             <h2 className="text-3xl font-bold text-white">{selectedIdea.businessTitle}</h2>
@@ -336,31 +455,31 @@ const App: React.FC = () => {
           
           {/* Left Col */}
           <div className="grid grid-rows-2 gap-4 md:col-span-1">
-             <CanvasBlock title="Key Partners" items={canvas.keyPartners} color="purple" />
-             <CanvasBlock title="Cost Structure" items={canvas.costStructure} color="pink" />
+             <CanvasBlock title={t.canvasSections.keyPartners} items={canvas.keyPartners} color="purple" />
+             <CanvasBlock title={t.canvasSections.costStructure} items={canvas.costStructure} color="pink" />
           </div>
 
           {/* Left-Mid Col */}
           <div className="grid grid-rows-2 gap-4 md:col-span-1">
-             <CanvasBlock title="Key Activities" items={canvas.keyActivities} color="blue" />
-             <CanvasBlock title="Key Resources" items={canvas.keyResources} color="blue" />
+             <CanvasBlock title={t.canvasSections.keyActivities} items={canvas.keyActivities} color="blue" />
+             <CanvasBlock title={t.canvasSections.keyResources} items={canvas.keyResources} color="blue" />
           </div>
 
           {/* Center Col */}
           <div className="md:col-span-1">
-             <CanvasBlock title="Value Propositions" items={canvas.valuePropositions} color="green" className="h-full border-neon-green shadow-neon-green border-opacity-30" />
+             <CanvasBlock title={t.canvasSections.valuePropositions} items={canvas.valuePropositions} color="green" className="h-full border-neon-green shadow-neon-green border-opacity-30" />
           </div>
 
           {/* Right-Mid Col */}
           <div className="grid grid-rows-2 gap-4 md:col-span-1">
-             <CanvasBlock title="Customer Relationships" items={canvas.customerRelationships} color="blue" />
-             <CanvasBlock title="Channels" items={canvas.channels} color="blue" />
+             <CanvasBlock title={t.canvasSections.customerRelationships} items={canvas.customerRelationships} color="blue" />
+             <CanvasBlock title={t.canvasSections.channels} items={canvas.channels} color="blue" />
           </div>
 
            {/* Right Col */}
            <div className="grid grid-rows-2 gap-4 md:col-span-1">
-             <CanvasBlock title="Customer Segments" items={canvas.customerSegments} color="purple" />
-             <CanvasBlock title="Revenue Streams" items={canvas.revenueStreams} color="pink" />
+             <CanvasBlock title={t.canvasSections.customerSegments} items={canvas.customerSegments} color="purple" />
+             <CanvasBlock title={t.canvasSections.revenueStreams} items={canvas.revenueStreams} color="pink" />
           </div>
 
         </div>
@@ -385,15 +504,15 @@ const App: React.FC = () => {
         {(appState === AppState.LOADING_IDEAS || appState === AppState.LOADING_PROFILE_IDEAS) && (
           <LoadingScan text={
             appState === AppState.LOADING_PROFILE_IDEAS 
-            ? "Analyzing Profile & Matching Technology..." 
-            : `Scanning Global Markets for ${selectedIndustry?.name}...`
+            ? t.loading.profile 
+            : t.loading.scanning(selectedIndustry ? (t.industries[selectedIndustry.id] || selectedIndustry.name) : '')
           } />
         )}
         
         {appState === AppState.SELECT_IDEA && renderIdeaSelection()}
         
         {appState === AppState.LOADING_CANVAS && (
-          <LoadingScan text={`Generating Business Model Strategy...`} />
+          <LoadingScan text={t.loading.canvas} />
         )}
         
         {appState === AppState.VIEW_CANVAS && renderBusinessCanvas()}

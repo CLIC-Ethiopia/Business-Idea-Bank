@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { BusinessIdea, BusinessCanvas, UserProfile } from "../types";
+import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language } from "../types";
 
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
@@ -23,6 +23,19 @@ const businessIdeaSchema: Schema = {
   }
 };
 
+// Schema for Business Details
+const businessDetailsSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    targetAudience: { type: Type.STRING, description: "Who are the customers?" },
+    operationalRequirements: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 key things needed to run it (space, power, license)" },
+    pros: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 Advantages" },
+    cons: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 Challenges" },
+    marketingQuickTip: { type: Type.STRING, description: "One actionable marketing tip" }
+  },
+  required: ["targetAudience", "operationalRequirements", "pros", "cons", "marketingQuickTip"]
+};
+
 // Schema for Business Canvas
 const canvasSchema: Schema = {
   type: Type.OBJECT,
@@ -43,14 +56,20 @@ const canvasSchema: Schema = {
   ]
 };
 
-export const generateIdeas = async (industry: string): Promise<BusinessIdea[]> => {
+export const generateIdeas = async (industry: string, language: Language): Promise<BusinessIdea[]> => {
   try {
+    const langInstruction = language === 'am' 
+      ? "IMPORTANT: Provide all text content (machineName, businessTitle, description, potentialRevenue) in Amharic language. Keep the price range with currency but you can translate descriptions of price. Keep the JSON structure and keys in English."
+      : "Provide content in English.";
+
     const prompt = `
       I am an entrepreneur looking for small-scale business ideas in the ${industry} industry.
       Please search your internal knowledge base for specific machines, systems, or technologies typically found on platforms like Alibaba or Amazon.
       List 6 distinct business ideas where purchasing one specific machine allows me to start a service or manufacturing business.
       Focus on machines that are accessible to small businesses (under $50,000 investment).
       For each, provide the machine name, a business title, price range, and likely source.
+      
+      ${langInstruction}
     `;
 
     const response = await ai.models.generateContent({
@@ -73,8 +92,12 @@ export const generateIdeas = async (industry: string): Promise<BusinessIdea[]> =
   }
 };
 
-export const generatePersonalizedIdeas = async (profile: UserProfile): Promise<BusinessIdea[]> => {
+export const generatePersonalizedIdeas = async (profile: UserProfile, language: Language): Promise<BusinessIdea[]> => {
   try {
+    const langInstruction = language === 'am' 
+      ? "IMPORTANT: Provide all text content in Amharic language. Keep the JSON structure and keys in English."
+      : "Provide content in English.";
+
     const prompt = `
       Act as a business consultant. Analyze the following user profile and recommend 6 personalized small business ideas based on machines/technologies available on Alibaba/Amazon.
       
@@ -90,6 +113,7 @@ export const generatePersonalizedIdeas = async (profile: UserProfile): Promise<B
       2. The machine cost must fit within or near the user's budget.
       3. The business should align with their skills and interests.
       
+      ${langInstruction}
       Output 6 distinct ideas.
     `;
 
@@ -113,14 +137,61 @@ export const generatePersonalizedIdeas = async (profile: UserProfile): Promise<B
   }
 };
 
-export const generateCanvas = async (idea: BusinessIdea): Promise<BusinessCanvas | null> => {
+export const generateBusinessDetails = async (idea: BusinessIdea, language: Language): Promise<BusinessDetails | null> => {
   try {
+    const langInstruction = language === 'am' 
+      ? "IMPORTANT: Provide all text content in Amharic language. Keep the JSON structure and keys in English."
+      : "Provide content in English.";
+
+    const prompt = `
+      Provide a brief operational analysis for this business idea:
+      Business: ${idea.businessTitle}
+      Machine: ${idea.machineName}
+      Description: ${idea.description}
+
+      Required Output:
+      1. Target Audience (Who buys this?)
+      2. Operational Requirements (3 short bullet points, e.g. Space, Power, License)
+      3. 3 Key Pros
+      4. 3 Key Cons
+      5. 1 Marketing Quick Tip
+
+      ${langInstruction}
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: businessDetailsSchema,
+        temperature: 0.7,
+      }
+    });
+
+    if (response.text) {
+      return JSON.parse(response.text) as BusinessDetails;
+    }
+    return null;
+  } catch (error) {
+    console.error("Error generating details:", error);
+    return null;
+  }
+};
+
+export const generateCanvas = async (idea: BusinessIdea, language: Language): Promise<BusinessCanvas | null> => {
+  try {
+    const langInstruction = language === 'am' 
+      ? "IMPORTANT: Provide all text content in Amharic language. Keep the JSON structure and keys in English."
+      : "Provide content in English.";
+
     const prompt = `
       Create a detailed Business Model Canvas for the following business idea:
       Machine: ${idea.machineName}
       Business: ${idea.businessTitle}
       Description: ${idea.description}
       
+      ${langInstruction}
       Provide 3-5 bullet points for each section of the canvas.
     `;
 
