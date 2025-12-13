@@ -13,6 +13,7 @@ export interface BusinessIdea {
   platformSource: 'Alibaba' | 'Amazon' | 'Global Sources';
   potentialRevenue: string;
   industryId?: string; // Optional linkage to industry
+  imageUrl?: string;
 }
 
 export interface BusinessDetails {

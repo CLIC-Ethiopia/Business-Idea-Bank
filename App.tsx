@@ -721,9 +721,13 @@ const App: React.FC = () => {
             <NeonCard key={idx} color="pink" className="flex flex-col h-full" hoverEffect={false}>
               <div className="relative h-48 mb-4 rounded-lg overflow-hidden border border-gray-800">
                 <img 
-                  src={`https://picsum.photos/400/300?random=${idx}`} 
+                  src={idea.imageUrl || `https://picsum.photos/400/300?random=${idx}`}
                   alt={idea.machineName} 
                   className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity"
+                  onError={(e) => {
+                      e.currentTarget.src = `https://picsum.photos/400/300?random=${idx}`;
+                      e.currentTarget.onerror = null; // Prevent infinite loop
+                  }}
                 />
                 <div className="absolute top-2 right-2 bg-black/80 text-neon-pink text-xs font-bold px-2 py-1 rounded border border-neon-pink">
                   {idea.platformSource}

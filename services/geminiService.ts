@@ -1,5 +1,6 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language } from "../types";
+import { fetchMachineImage } from "./googleSearchService";
 
 const apiKey = process.env.API_KEY || '';
 const ai = new GoogleGenAI({ apiKey });
@@ -83,7 +84,15 @@ export const generateIdeas = async (industry: string, language: Language): Promi
     });
 
     if (response.text) {
-      return JSON.parse(response.text) as BusinessIdea[];
+      const ideas = JSON.parse(response.text) as BusinessIdea[];
+      
+      // Enhance ideas with real images from Google Search
+      const ideasWithImages = await Promise.all(ideas.map(async (idea) => {
+         const imageUrl = await fetchMachineImage(idea.machineName);
+         return { ...idea, imageUrl };
+      }));
+
+      return ideasWithImages;
     }
     return [];
   } catch (error) {
@@ -130,7 +139,15 @@ export const generatePersonalizedIdeas = async (profile: UserProfile, language: 
     });
 
     if (response.text) {
-      return JSON.parse(response.text) as BusinessIdea[];
+      const ideas = JSON.parse(response.text) as BusinessIdea[];
+
+      // Enhance ideas with real images from Google Search
+      const ideasWithImages = await Promise.all(ideas.map(async (idea) => {
+         const imageUrl = await fetchMachineImage(idea.machineName);
+         return { ...idea, imageUrl };
+      }));
+
+      return ideasWithImages;
     }
     return [];
   } catch (error) {
