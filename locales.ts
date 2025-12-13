@@ -110,6 +110,7 @@ interface LocaleStrings {
     revenue: string;
     education: string;
     experience: string;
+    skillReqs: string;
   };
   options: {
     budget: Record<string, string>;
@@ -129,6 +130,7 @@ interface LocaleStrings {
   detailsSections: {
     audience: string;
     requirements: string;
+    skillRequirements: string;
     pros: string;
     cons: string;
     marketing: string;
@@ -259,7 +261,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       price: "$2,000 - $5,000",
       revenue: "$5,000/month",
       education: "e.g. BSc Mechanical Engineering, Self-taught Python",
-      experience: "e.g. 5 years in automotive repair, 2 years retail"
+      experience: "e.g. 5 years in automotive repair, 2 years retail",
+      skillReqs: "e.g. Basic Welding, AutoCAD, Sales (Comma Separated)"
     },
     options: {
       budget: {
@@ -315,6 +318,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     detailsSections: {
       audience: "Target Audience",
       requirements: "Operational Requirements",
+      skillRequirements: "Skill Requirements",
       pros: "Pros",
       cons: "Cons",
       marketing: "Marketing Quick Tip"
@@ -443,7 +447,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       price: "$2,000 - $5,000",
       revenue: "$5,000/በወር",
       education: "ለምሳሌ BSc ምህንድስና",
-      experience: "ለምሳሌ የ 5 ዓመት የተሽከርካሪ ጥገና"
+      experience: "ለምሳሌ የ 5 ዓመት የተሽከርካሪ ጥገና",
+      skillReqs: "ለምሳሌ መሰረታዊ ብየዳ ፣ ዲዛይን (በኮማ የተለየ)"
     },
     options: {
       budget: {
@@ -499,6 +504,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     detailsSections: {
       audience: "የታለመ ደንበኛ",
       requirements: "የክወና መስፈርቶች",
+      skillRequirements: "የክህሎት መስፈርቶች",
       pros: "ጥቅሞች",
       cons: "ጉዳቶች",
       marketing: "የግብይት ጠቃሚ ምክር"

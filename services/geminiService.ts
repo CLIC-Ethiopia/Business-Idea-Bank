@@ -30,11 +30,12 @@ const businessDetailsSchema: Schema = {
   properties: {
     targetAudience: { type: Type.STRING, description: "Who are the customers?" },
     operationalRequirements: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 key things needed to run it (space, power, license)" },
+    skillRequirements: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 key skills needed to operate the business" },
     pros: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 Advantages" },
     cons: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 Challenges" },
     marketingQuickTip: { type: Type.STRING, description: "One actionable marketing tip" }
   },
-  required: ["targetAudience", "operationalRequirements", "pros", "cons", "marketingQuickTip"]
+  required: ["targetAudience", "operationalRequirements", "skillRequirements", "pros", "cons", "marketingQuickTip"]
 };
 
 // Schema for Business Canvas
@@ -171,9 +172,10 @@ export const generateBusinessDetails = async (idea: BusinessIdea, language: Lang
       Required Output:
       1. Target Audience (Who buys this?)
       2. Operational Requirements (3 short bullet points, e.g. Space, Power, License)
-      3. 3 Key Pros
-      4. 3 Key Cons
-      5. 1 Marketing Quick Tip
+      3. Skill Requirements (3 short bullet points, e.g. Welding, Design, Sales)
+      4. 3 Key Pros
+      5. 3 Key Cons
+      6. 1 Marketing Quick Tip
 
       ${langInstruction}
     `;

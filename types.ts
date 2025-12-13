@@ -14,11 +14,13 @@ export interface BusinessIdea {
   potentialRevenue: string;
   industryId?: string; // Optional linkage to industry
   imageUrl?: string;
+  skillRequirements?: string[];
 }
 
 export interface BusinessDetails {
   targetAudience: string;
   operationalRequirements: string[];
+  skillRequirements: string[];
   pros: string[];
   cons: string[];
   marketingQuickTip: string;

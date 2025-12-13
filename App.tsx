@@ -220,7 +220,8 @@ const App: React.FC = () => {
           priceRange: item.price_range,
           platformSource: item.platform_source as any,
           potentialRevenue: item.potential_revenue,
-          industryId: item.industry_id
+          industryId: item.industry_id,
+          skillRequirements: item.skill_requirements // Map skills
        }));
        setSavedIdeas(mappedIdeas);
     }
@@ -259,7 +260,8 @@ const App: React.FC = () => {
            platform_source: idea.platformSource,
            potential_revenue: idea.potentialRevenue,
            industry_id: selectedIndustry?.id || 'custom',
-           is_saved: true
+           is_saved: true,
+           skill_requirements: idea.skillRequirements || [] // Save skills if present
         })
         .select()
         .single();
@@ -412,6 +414,10 @@ const App: React.FC = () => {
       if (!details) {
         setLoadingDetails(false);
       } else {
+        // If the Idea object itself has skills (from Admin/DB), prioritize them
+        if (idea.skillRequirements && idea.skillRequirements.length > 0) {
+            details.skillRequirements = idea.skillRequirements;
+        }
         setBusinessDetails(details);
         setLoadingDetails(false);
       }
@@ -1043,12 +1049,27 @@ const App: React.FC = () => {
                     <h4 className="text-neon-blue font-bold uppercase mb-2 text-sm">{t.detailsSections.audience}</h4>
                     <p className="text-gray-300">{businessDetails.targetAudience}</p>
                   </div>
-                  <div>
-                    <h4 className="text-neon-purple font-bold uppercase mb-2 text-sm">{t.detailsSections.requirements}</h4>
-                    <ul className="list-disc list-inside text-gray-300 space-y-1">
-                      {businessDetails.operationalRequirements.map((r, i) => <li key={i}>{r}</li>)}
-                    </ul>
+                  
+                  {/* Updated Layout for Requirements and Skills */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <h4 className="text-neon-purple font-bold uppercase mb-2 text-sm">{t.detailsSections.requirements}</h4>
+                        <ul className="list-disc list-inside text-gray-300 space-y-1">
+                          {businessDetails.operationalRequirements.map((r, i) => <li key={i}>{r}</li>)}
+                        </ul>
+                      </div>
+                      <div>
+                        <h4 className="text-neon-yellow font-bold uppercase mb-2 text-sm">{t.detailsSections.skillRequirements}</h4>
+                        <ul className="list-disc list-inside text-gray-300 space-y-1">
+                          {businessDetails.skillRequirements && businessDetails.skillRequirements.length > 0 ? (
+                             businessDetails.skillRequirements.map((r, i) => <li key={i}>{r}</li>)
+                          ) : (
+                             <li className="italic text-gray-500">None specified</li>
+                          )}
+                        </ul>
+                      </div>
                   </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div className="bg-green-900/20 p-4 rounded border border-green-900">
                         <h4 className="text-neon-green font-bold uppercase mb-2 text-sm">{t.detailsSections.pros}</h4>

@@ -184,11 +184,12 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
   const [dbIdeas, setDbIdeas] = useState<BusinessIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
-  const [formData, setFormData] = useState<Partial<BusinessIdea>>({
+  const [formData, setFormData] = useState<Partial<BusinessIdea> & { rawSkills?: string }>({
       platformSource: 'Alibaba',
       priceRange: '',
       potentialRevenue: '',
-      industryId: INDUSTRIES[0].id
+      industryId: INDUSTRIES[0].id,
+      rawSkills: ''
   });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -213,9 +214,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
               platformSource: item.platform_source as any,
               potentialRevenue: item.potential_revenue,
               industryId: item.industry_id,
-              // Note: imageUrl might not be in the current schema based on provided App.tsx save logic, 
-              // but we map it if it exists or use default
-              imageUrl: item.image_url
+              imageUrl: item.image_url,
+              skillRequirements: item.skill_requirements // Map Supabase JSON/Array to frontend
           }));
           setDbIdeas(mapped);
       }
@@ -226,6 +226,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
       e.preventDefault();
       if (!formData.businessTitle || !formData.machineName) return;
 
+      const skillsArray = formData.rawSkills ? formData.rawSkills.split(',').map(s => s.trim()).filter(s => s.length > 0) : [];
+
       const payload = {
           user_id: user.id, // Admin owns this record
           machine_name: formData.machineName,
@@ -235,7 +237,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
           platform_source: formData.platformSource,
           potential_revenue: formData.potentialRevenue,
           industry_id: formData.industryId || 'custom',
-          is_saved: true // Treat as a saved idea
+          is_saved: true, // Treat as a saved idea
+          skill_requirements: skillsArray // Save to DB
       };
 
       try {
@@ -254,7 +257,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
           
           alert(isEditing ? "Idea updated successfully!" : "Idea created successfully!");
           setViewMode('list');
-          setFormData({ platformSource: 'Alibaba', priceRange: '', potentialRevenue: '', industryId: INDUSTRIES[0].id });
+          setFormData({ platformSource: 'Alibaba', priceRange: '', potentialRevenue: '', industryId: INDUSTRIES[0].id, rawSkills: '' });
           setIsEditing(false);
           fetchIdeas();
 
@@ -277,7 +280,10 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
   };
 
   const startEdit = (idea: BusinessIdea) => {
-      setFormData(idea);
+      setFormData({
+          ...idea,
+          rawSkills: idea.skillRequirements ? idea.skillRequirements.join(', ') : ''
+      });
       setIsEditing(true);
       setViewMode('form');
   };
@@ -290,7 +296,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
         industryId: INDUSTRIES[0].id,
         businessTitle: '',
         machineName: '',
-        description: ''
+        description: '',
+        rawSkills: ''
       });
       setIsEditing(false);
       setViewMode('form');
@@ -391,7 +398,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
                     value={formData.description || ''}
                     onChange={e => setFormData({...formData, description: e.target.value})}
                     required
-                    className="h-32"
+                    className="h-24"
+                 />
+                 
+                 <NeonTextArea 
+                    label={t.detailsSections.skillRequirements}
+                    placeholder={t.placeholders.skillReqs}
+                    value={formData.rawSkills || ''}
+                    onChange={e => setFormData({...formData, rawSkills: e.target.value})}
+                    className="h-20"
                  />
 
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
