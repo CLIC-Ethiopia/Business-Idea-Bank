@@ -6,6 +6,7 @@ import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language
 import { TRANSLATIONS } from './locales';
 import { Auth } from './components/Auth';
 import { UserDashboard, AdminDashboard } from './components/Dashboards';
+import { About } from './components/About';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -29,6 +30,12 @@ const GlobeIcon = () => (
 const HomeIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+);
+
+const InfoIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
   </svg>
 );
 
@@ -246,30 +253,39 @@ const App: React.FC = () => {
       return (
           <div className="flex justify-between items-center p-4 bg-black border-b border-gray-900 sticky top-0 z-20 backdrop-blur-md bg-opacity-80">
               <div className="flex items-center gap-4">
-                  <span className="font-orbitron font-bold text-xl tracking-tighter">
+                  <span className="font-orbitron font-bold text-xl tracking-tighter cursor-pointer" onClick={() => setAppState(AppState.SELECT_INDUSTRY)}>
                       <span className="text-white">NEON</span>
                       <span className="text-neon-blue">ID</span>
                   </span>
+                  
                   {/* Nav Links */}
-                  <button 
-                    onClick={() => setAppState(AppState.SELECT_INDUSTRY)}
-                    className={`text-sm uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState !== AppState.DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
-                  >
-                      <HomeIcon /> {t.scanBtn}
-                  </button>
-                  <button 
-                    onClick={() => setAppState(AppState.DASHBOARD)}
-                    className={`text-sm uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
-                  >
-                      <UserIcon /> {currentUser.role === 'admin' ? 'Admin Deck' : 'Profile'}
-                  </button>
+                  <div className="hidden md:flex items-center gap-6 ml-8">
+                    <button 
+                      onClick={() => setAppState(AppState.SELECT_INDUSTRY)}
+                      className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.SELECT_INDUSTRY ? 'text-neon-blue' : 'text-gray-500'}`}
+                    >
+                        <HomeIcon /> {t.nav.home}
+                    </button>
+                    <button 
+                      onClick={() => setAppState(AppState.DASHBOARD)}
+                      className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
+                    >
+                        <UserIcon /> {currentUser.role === 'admin' ? t.nav.admin : t.nav.profile}
+                    </button>
+                    <button 
+                      onClick={() => setAppState(AppState.ABOUT)}
+                      className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.ABOUT ? 'text-neon-blue' : 'text-gray-500'}`}
+                    >
+                        <InfoIcon /> {t.nav.about}
+                    </button>
+                  </div>
               </div>
               <div className="flex items-center gap-4">
                   <button onClick={toggleLanguage} className="text-gray-400 hover:text-white flex items-center gap-1">
                       <GlobeIcon /> <span className="text-xs uppercase">{language}</span>
                   </button>
                   <button onClick={handleLogout} className="text-red-500 hover:text-red-400 text-xs uppercase font-bold tracking-widest border border-red-900 px-3 py-1 rounded">
-                      Log Out
+                      {t.nav.logout}
                   </button>
               </div>
           </div>
@@ -565,6 +581,10 @@ const App: React.FC = () => {
         <main className="flex-grow">
           {appState === AppState.LOGIN && (
               <Auth onLogin={handleLogin} t={t} />
+          )}
+
+          {appState === AppState.ABOUT && (
+              <About t={t} onBack={() => setAppState(AppState.SELECT_INDUSTRY)} />
           )}
 
           {appState === AppState.DASHBOARD && currentUser && (

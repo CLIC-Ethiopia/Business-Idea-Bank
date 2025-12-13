@@ -18,6 +18,13 @@ interface LocaleStrings {
   closeBtn: string;
   profileTitle: string;
   profileSubtitle: string;
+  nav: {
+    home: string;
+    profile: string;
+    admin: string;
+    about: string;
+    logout: string;
+  };
   login: {
     title: string;
     subtitle: string;
@@ -44,6 +51,20 @@ interface LocaleStrings {
     experience: string;
     updateBtn: string;
     recommended: string;
+  };
+  about: {
+    intro: string;
+    missionTitle: string;
+    missionText: string;
+    step1Title: string;
+    step1Text: string;
+    step2Title: string;
+    step2Text: string;
+    step3Title: string;
+    step3Text: string;
+    featuresTitle: string;
+    features: string[];
+    backBtn: string;
   };
   labels: {
     name: string;
@@ -117,6 +138,13 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     closeBtn: "Close",
     profileTitle: "ENTREPRENEUR PROFILE",
     profileSubtitle: "Calibrate the AI to match your capabilities with market opportunities.",
+    nav: {
+      home: "Scanner",
+      profile: "Profile",
+      admin: "Admin Deck",
+      about: "About",
+      logout: "Log Out"
+    },
     login: {
       title: "ACCESS TERMINAL",
       subtitle: "Authenticate to access the Idea Bank",
@@ -143,6 +171,27 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       experience: "Professional Experience",
       updateBtn: "Update & Generate Recommendations",
       recommended: "AI Recommended Opportunities"
+    },
+    about: {
+      intro: "NeonVentures is a futuristic intelligence platform designed to identify tangible, machine-based micro-business opportunities for the modern entrepreneur.",
+      missionTitle: "The Mission",
+      missionText: "Our core directive is to democratize access to manufacturing and service-based business models. By analyzing global supply chains (like Alibaba and Amazon) and correlating them with local market needs, we generate actionable business blueprints. We don't just give you an idea; we give you the machine, the strategy, and the roadmap.",
+      step1Title: "Scan & Identify",
+      step1Text: "Select a sector or build your profile. Our AI scans global marketplaces to find affordable machines that power high-margin businesses.",
+      step2Title: "Analyze Model",
+      step2Text: "Deep dive into the operational requirements. We generate a full Business Model Canvas, SWOT analysis, and marketing tips instantly.",
+      step3Title: "Execute & Save",
+      step3Text: "Save your favorite concepts to your dashboard. Review operational requirements and prepare for deployment.",
+      featuresTitle: "System Features",
+      features: [
+        "AI-Powered Market Scanning",
+        "Real-time Machine Sourcing Data",
+        "Instant Business Model Canvas Generation",
+        "Personalized Opportunity Matching",
+        "Operational Requirement Analysis",
+        "Cyberpunk UI for Enhanced Focus"
+      ],
+      backBtn: "Return to Terminal"
     },
     labels: {
       name: "Name",
@@ -250,6 +299,13 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     closeBtn: "ዝጋ",
     profileTitle: "የኢንተርፕረነር መገለጫ",
     profileSubtitle: "ችሎታዎን ከገበያ እድሎች ጋር ለማዛመድ AI ያስተካክሉ።",
+    nav: {
+      home: "ስካነር",
+      profile: "መገለጫ",
+      admin: "አድሚን",
+      about: "ስለ እኛ",
+      logout: "ውጣ"
+    },
     login: {
       title: "መግቢያ ተርሚናል",
       subtitle: "የሀሳብ ባንኩን ለመጠቀም ማንነትዎን ያረጋግጡ",
@@ -276,6 +332,27 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       experience: "የስራ ልምድ",
       updateBtn: "አዘምን እና ምክሮችን አግኝ",
       recommended: "AI የተጠቆሙ እድሎች"
+    },
+    about: {
+      intro: "ኒዮን ቬንቸርስ ለዘመናዊ ኢንተርፕረነሮች ተጨባጭ እና ማሽን ላይ የተመሰረቱ ጥቃቅን የንግድ እድሎችን ለመለየት የተነደፈ የወደፊት ኢንተለጀንስ መድረክ ነው።",
+      missionTitle: "ተልዕኮ",
+      missionText: "ዋናው አላማችን የማምረቻ እና የአገልግሎት ተኮር የንግድ ሞዴሎችን ተደራሽ ማድረግ ነው። ዓለም አቀፍ የአቅርቦት ሰንሰለቶችን (እንደ Alibaba እና Amazon ያሉ) በመተንተን እና ከአካባቢው ገበያ ፍላጎቶች ጋር በማዛመድ፣ ተግባራዊ የሆኑ የንግድ ንድፎችን እናመነጫለን። ሀሳብ ብቻ ሳይሆን ማሽኑን፣ ስልቱን እና ፍኖተ ካርታውን እንሰጥዎታለን።",
+      step1Title: "ይቃኙ እና ይለዩ",
+      step1Text: "ዘርፍ ይምረጡ ወይም መገለጫዎን ይገንቡ። የእኛ AI ከፍተኛ ገቢ የሚያስገኙ ንግዶችን የሚያንቀሳቅሱ ተመጣጣኝ ማሽኖችን ለማግኘት ዓለም አቀፍ ገበያዎችን ይቃኛል።",
+      step2Title: "ሞዴሉን ይተንትኑ",
+      step2Text: "የክወና መስፈርቶችን በጥልቀት ይመርምሩ። ሙሉ የንግድ ሞዴል ሸራ፣ የ SWOT ትንታኔ እና የግብይት ምክሮችን ወዲያውኑ እናመነጫለን።",
+      step3Title: "ይተግብሩ እና ያስቀምጡ",
+      step3Text: "የሚወዷቸውን ፅንሰ-ሀሳቦች በዳሽቦርድዎ ላይ ያስቀምጡ። የክወና መስፈርቶችን ይገምግሙ እና ለስራ ዝግጁ ይሁኑ።",
+      featuresTitle: "የስርዓት ባህሪያት",
+      features: [
+        "በ AI የሚታገዝ የገበያ ቅኝት",
+        "የእውነተኛ ጊዜ ማሽን መረጃ",
+        "ፈጣን የንግድ ሞዴል ሸራ ማመንጨት",
+        "ለእርስዎ የተበጁ እድሎች",
+        "የክወና መስፈርቶች ትንታኔ",
+        "ዘመናዊ ሳይበርፓንክ ዩዘር ኢንተርፌስ"
+      ],
+      backBtn: "ወደ ተርሚናል ተመለስ"
     },
     labels: {
       name: "ስም",
