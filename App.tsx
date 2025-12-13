@@ -221,7 +221,8 @@ const App: React.FC = () => {
           platformSource: item.platform_source as any,
           potentialRevenue: item.potential_revenue,
           industryId: item.industry_id,
-          skillRequirements: item.skill_requirements // Map skills
+          skillRequirements: item.skill_requirements, // Map skills
+          operationalRequirements: item.operational_requirements // Map Operational Reqs
        }));
        setSavedIdeas(mappedIdeas);
     }
@@ -261,7 +262,8 @@ const App: React.FC = () => {
            potential_revenue: idea.potentialRevenue,
            industry_id: selectedIndustry?.id || 'custom',
            is_saved: true,
-           skill_requirements: idea.skillRequirements || [] // Save skills if present
+           skill_requirements: idea.skillRequirements || [], // Save skills if present
+           operational_requirements: idea.operationalRequirements || [] // Save Operational Reqs
         })
         .select()
         .single();
@@ -417,6 +419,10 @@ const App: React.FC = () => {
         // If the Idea object itself has skills (from Admin/DB), prioritize them
         if (idea.skillRequirements && idea.skillRequirements.length > 0) {
             details.skillRequirements = idea.skillRequirements;
+        }
+        // If the Idea object has Operational Reqs (from Admin/DB), prioritize them
+        if (idea.operationalRequirements && idea.operationalRequirements.length > 0) {
+            details.operationalRequirements = idea.operationalRequirements;
         }
         setBusinessDetails(details);
         setLoadingDetails(false);
@@ -1055,7 +1061,11 @@ const App: React.FC = () => {
                       <div>
                         <h4 className="text-neon-purple font-bold uppercase mb-2 text-sm">{t.detailsSections.requirements}</h4>
                         <ul className="list-disc list-inside text-gray-300 space-y-1">
-                          {businessDetails.operationalRequirements.map((r, i) => <li key={i}>{r}</li>)}
+                          {businessDetails.operationalRequirements && businessDetails.operationalRequirements.length > 0 ? (
+                             businessDetails.operationalRequirements.map((r, i) => <li key={i}>{r}</li>)
+                          ) : (
+                             <li className="italic text-gray-500">None specified</li>
+                          )}
                         </ul>
                       </div>
                       <div>

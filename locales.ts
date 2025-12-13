@@ -111,6 +111,7 @@ interface LocaleStrings {
     education: string;
     experience: string;
     skillReqs: string;
+    operationalReqs: string;
   };
   options: {
     budget: Record<string, string>;
@@ -262,7 +263,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       revenue: "$5,000/month",
       education: "e.g. BSc Mechanical Engineering, Self-taught Python",
       experience: "e.g. 5 years in automotive repair, 2 years retail",
-      skillReqs: "e.g. Basic Welding, AutoCAD, Sales (Comma Separated)"
+      skillReqs: "e.g. Basic Welding, AutoCAD, Sales (Comma Separated)",
+      operationalReqs: "e.g. 50sqm Space, 3-Phase Power, Food License (Comma Separated)"
     },
     options: {
       budget: {
@@ -448,7 +450,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       revenue: "$5,000/በወር",
       education: "ለምሳሌ BSc ምህንድስና",
       experience: "ለምሳሌ የ 5 ዓመት የተሽከርካሪ ጥገና",
-      skillReqs: "ለምሳሌ መሰረታዊ ብየዳ ፣ ዲዛይን (በኮማ የተለየ)"
+      skillReqs: "ለምሳሌ መሰረታዊ ብየዳ ፣ ዲዛይን (በኮማ የተለየ)",
+      operationalReqs: "ለምሳሌ 50 ካሬ ሜትር ቦታ፣ ባለ 3 ምዕራፍ ኃይል (በኮማ የተለየ)"
     },
     options: {
       budget: {

@@ -184,12 +184,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
   const [dbIdeas, setDbIdeas] = useState<BusinessIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
-  const [formData, setFormData] = useState<Partial<BusinessIdea> & { rawSkills?: string }>({
+  const [formData, setFormData] = useState<Partial<BusinessIdea> & { rawSkills?: string, rawOperationalReqs?: string }>({
       platformSource: 'Alibaba',
       priceRange: '',
       potentialRevenue: '',
       industryId: INDUSTRIES[0].id,
-      rawSkills: ''
+      rawSkills: '',
+      rawOperationalReqs: ''
   });
   const [isEditing, setIsEditing] = useState(false);
 
@@ -215,7 +216,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
               potentialRevenue: item.potential_revenue,
               industryId: item.industry_id,
               imageUrl: item.image_url,
-              skillRequirements: item.skill_requirements // Map Supabase JSON/Array to frontend
+              skillRequirements: item.skill_requirements, // Map Supabase JSON/Array to frontend
+              operationalRequirements: item.operational_requirements // Map Operational Reqs
           }));
           setDbIdeas(mapped);
       }
@@ -227,6 +229,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
       if (!formData.businessTitle || !formData.machineName) return;
 
       const skillsArray = formData.rawSkills ? formData.rawSkills.split(',').map(s => s.trim()).filter(s => s.length > 0) : [];
+      const operationalArray = formData.rawOperationalReqs ? formData.rawOperationalReqs.split(',').map(s => s.trim()).filter(s => s.length > 0) : [];
 
       const payload = {
           user_id: user.id, // Admin owns this record
@@ -238,7 +241,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
           potential_revenue: formData.potentialRevenue,
           industry_id: formData.industryId || 'custom',
           is_saved: true, // Treat as a saved idea
-          skill_requirements: skillsArray // Save to DB
+          skill_requirements: skillsArray, // Save to DB
+          operational_requirements: operationalArray // Save to DB
       };
 
       try {
@@ -257,7 +261,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
           
           alert(isEditing ? "Idea updated successfully!" : "Idea created successfully!");
           setViewMode('list');
-          setFormData({ platformSource: 'Alibaba', priceRange: '', potentialRevenue: '', industryId: INDUSTRIES[0].id, rawSkills: '' });
+          setFormData({ platformSource: 'Alibaba', priceRange: '', potentialRevenue: '', industryId: INDUSTRIES[0].id, rawSkills: '', rawOperationalReqs: '' });
           setIsEditing(false);
           fetchIdeas();
 
@@ -282,7 +286,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
   const startEdit = (idea: BusinessIdea) => {
       setFormData({
           ...idea,
-          rawSkills: idea.skillRequirements ? idea.skillRequirements.join(', ') : ''
+          rawSkills: idea.skillRequirements ? idea.skillRequirements.join(', ') : '',
+          rawOperationalReqs: idea.operationalRequirements ? idea.operationalRequirements.join(', ') : ''
       });
       setIsEditing(true);
       setViewMode('form');
@@ -297,7 +302,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
         businessTitle: '',
         machineName: '',
         description: '',
-        rawSkills: ''
+        rawSkills: '',
+        rawOperationalReqs: ''
       });
       setIsEditing(false);
       setViewMode('form');
@@ -401,13 +407,22 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
                     className="h-24"
                  />
                  
-                 <NeonTextArea 
-                    label={t.detailsSections.skillRequirements}
-                    placeholder={t.placeholders.skillReqs}
-                    value={formData.rawSkills || ''}
-                    onChange={e => setFormData({...formData, rawSkills: e.target.value})}
-                    className="h-20"
-                 />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <NeonTextArea 
+                        label={t.detailsSections.requirements}
+                        placeholder={t.placeholders.operationalReqs}
+                        value={formData.rawOperationalReqs || ''}
+                        onChange={e => setFormData({...formData, rawOperationalReqs: e.target.value})}
+                        className="h-20"
+                    />
+                    <NeonTextArea 
+                        label={t.detailsSections.skillRequirements}
+                        placeholder={t.placeholders.skillReqs}
+                        value={formData.rawSkills || ''}
+                        onChange={e => setFormData({...formData, rawSkills: e.target.value})}
+                        className="h-20"
+                    />
+                 </div>
 
                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <NeonInput 

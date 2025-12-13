@@ -15,6 +15,7 @@ export interface BusinessIdea {
   industryId?: string; // Optional linkage to industry
   imageUrl?: string;
   skillRequirements?: string[];
+  operationalRequirements?: string[];
 }
 
 export interface BusinessDetails {
