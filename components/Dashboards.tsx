@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, NeonText } from './NeonUI';
+import React, { useState, useEffect } from 'react';
+import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, NeonText, LoadingScan } from './NeonUI';
 import { User, BusinessIdea, Industry, UserProfile } from '../types';
 import { INDUSTRIES } from '../constants';
+import { supabase } from '../services/supabaseClient';
 
 interface UserDashboardProps {
   user: User;
@@ -180,30 +181,119 @@ interface AdminDashboardProps {
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea, t }) => {
-  const [newIdea, setNewIdea] = useState<Partial<BusinessIdea>>({
+  const [dbIdeas, setDbIdeas] = useState<BusinessIdea[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
+  const [formData, setFormData] = useState<Partial<BusinessIdea>>({
       platformSource: 'Alibaba',
       priceRange: '',
-      potentialRevenue: ''
+      potentialRevenue: '',
+      industryId: INDUSTRIES[0].id
   });
-  const [industry, setIndustry] = useState(INDUSTRIES[0].id);
+  const [isEditing, setIsEditing] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (newIdea.businessTitle && newIdea.machineName && newIdea.description) {
-          onAddIdea({
-              id: `custom-${Date.now()}`,
-              businessTitle: newIdea.businessTitle,
-              machineName: newIdea.machineName,
-              description: newIdea.description,
-              priceRange: newIdea.priceRange || '$1,000 - $5,000',
-              potentialRevenue: newIdea.potentialRevenue || '$5,000/mo',
-              platformSource: newIdea.platformSource as any,
-              industryId: industry
-          } as BusinessIdea);
-          // Reset
-          setNewIdea({ platformSource: 'Alibaba', priceRange: '', potentialRevenue: '' });
-          alert("Idea added to Bank!");
+  useEffect(() => {
+      fetchIdeas();
+  }, []);
+
+  const fetchIdeas = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+          .from('ideas')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+      if (data) {
+          const mapped: BusinessIdea[] = data.map(item => ({
+              id: item.id,
+              machineName: item.machine_name,
+              businessTitle: item.business_title,
+              description: item.description,
+              priceRange: item.price_range,
+              platformSource: item.platform_source as any,
+              potentialRevenue: item.potential_revenue,
+              industryId: item.industry_id,
+              // Note: imageUrl might not be in the current schema based on provided App.tsx save logic, 
+              // but we map it if it exists or use default
+              imageUrl: item.image_url
+          }));
+          setDbIdeas(mapped);
       }
+      setLoading(false);
+  };
+
+  const handleCreateOrUpdate = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!formData.businessTitle || !formData.machineName) return;
+
+      const payload = {
+          user_id: user.id, // Admin owns this record
+          machine_name: formData.machineName,
+          business_title: formData.businessTitle,
+          description: formData.description,
+          price_range: formData.priceRange,
+          platform_source: formData.platformSource,
+          potential_revenue: formData.potentialRevenue,
+          industry_id: formData.industryId || 'custom',
+          is_saved: true // Treat as a saved idea
+      };
+
+      try {
+          if (isEditing && formData.id) {
+             const { error } = await supabase
+                 .from('ideas')
+                 .update(payload)
+                 .eq('id', formData.id);
+             if (error) throw error;
+          } else {
+             const { error } = await supabase
+                 .from('ideas')
+                 .insert(payload);
+             if (error) throw error;
+          }
+          
+          alert(isEditing ? "Idea updated successfully!" : "Idea created successfully!");
+          setViewMode('list');
+          setFormData({ platformSource: 'Alibaba', priceRange: '', potentialRevenue: '', industryId: INDUSTRIES[0].id });
+          setIsEditing(false);
+          fetchIdeas();
+
+      } catch (err: any) {
+          console.error("Error saving idea:", err);
+          alert("Error saving idea: " + err.message);
+      }
+  };
+
+  const handleDelete = async (id: string) => {
+      if (!window.confirm("Are you sure you want to delete this idea? This cannot be undone.")) return;
+      
+      try {
+          const { error } = await supabase.from('ideas').delete().eq('id', id);
+          if (error) throw error;
+          setDbIdeas(prev => prev.filter(i => i.id !== id));
+      } catch (err: any) {
+          alert("Error deleting idea: " + err.message);
+      }
+  };
+
+  const startEdit = (idea: BusinessIdea) => {
+      setFormData(idea);
+      setIsEditing(true);
+      setViewMode('form');
+  };
+
+  const startCreate = () => {
+      setFormData({
+        platformSource: 'Alibaba',
+        priceRange: '',
+        potentialRevenue: '',
+        industryId: INDUSTRIES[0].id,
+        businessTitle: '',
+        machineName: '',
+        description: ''
+      });
+      setIsEditing(false);
+      setViewMode('form');
   };
 
   const StatCard = ({ label, value, color }: { label: string, value: string, color: 'blue'|'pink'|'green' }) => (
@@ -225,72 +315,121 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
         <StatCard label={t.dashboard.totalUsers} value="1,240" color="blue" />
-        <StatCard label={t.dashboard.ideasGen} value="45.2K" color="pink" />
+        <StatCard label={t.dashboard.ideasGen} value={`${dbIdeas.length}`} color="pink" />
         <StatCard label={t.dashboard.activeSessions} value="12" color="green" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div>
-            <h3 className="text-xl font-bold text-neon-blue mb-4 uppercase">{t.dashboard.addIdea}</h3>
-            <NeonCard color="blue" hoverEffect={false}>
-                <form onSubmit={handleSubmit}>
-                    <NeonSelect 
-                        label={t.labels.industry}
-                        value={industry}
-                        onChange={(e) => setIndustry(e.target.value)}
-                        options={INDUSTRIES.map(i => ({ value: i.id, label: t.industries[i.id] || i.name }))}
-                    />
-                    <div className="grid grid-cols-2 gap-4">
-                        <NeonInput 
-                            label={t.placeholders.ideaTitle}
-                            value={newIdea.businessTitle || ''}
-                            onChange={e => setNewIdea({...newIdea, businessTitle: e.target.value})}
-                            required
-                        />
-                        <NeonInput 
-                            label={t.placeholders.machineName}
-                            value={newIdea.machineName || ''}
-                            onChange={e => setNewIdea({...newIdea, machineName: e.target.value})}
-                            required
-                        />
-                    </div>
-                    <NeonTextArea 
-                        label={t.placeholders.desc}
-                        value={newIdea.description || ''}
-                        onChange={e => setNewIdea({...newIdea, description: e.target.value})}
+      {/* Management Area */}
+      <NeonCard color="blue" hoverEffect={false} className="min-h-[500px]">
+          <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-800">
+             <h3 className="text-xl font-bold text-neon-blue uppercase tracking-wider">
+                 {viewMode === 'list' ? 'Business Idea Database' : (isEditing ? 'Edit Idea Protocol' : 'New Idea Injection')}
+             </h3>
+             {viewMode === 'list' ? (
+                 <NeonButton color="green" onClick={startCreate} className="py-2 px-4 text-xs">
+                    + {t.dashboard.addIdea}
+                 </NeonButton>
+             ) : (
+                 <NeonButton color="pink" onClick={() => setViewMode('list')} className="py-2 px-4 text-xs">
+                    Cancel Operation
+                 </NeonButton>
+             )}
+          </div>
+
+          {loading ? (
+              <div className="flex justify-center items-center h-64">
+                  <div className="w-8 h-8 border-2 border-neon-blue border-t-transparent rounded-full animate-spin"></div>
+              </div>
+          ) : viewMode === 'list' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {dbIdeas.length === 0 ? (
+                      <div className="col-span-full text-center text-gray-500 py-12">No ideas found in the database.</div>
+                  ) : (
+                      dbIdeas.map(idea => (
+                          <div key={idea.id} className="bg-black/30 border border-gray-800 rounded-lg p-4 hover:border-neon-blue transition-colors flex flex-col">
+                              <div className="flex justify-between items-start mb-2">
+                                  <div className="text-xs text-gray-500 uppercase font-mono">{idea.industryId}</div>
+                                  <div className="text-[10px] text-neon-purple border border-neon-purple px-1 rounded">{idea.platformSource}</div>
+                              </div>
+                              <h4 className="text-white font-bold truncate mb-1" title={idea.businessTitle}>{idea.businessTitle}</h4>
+                              <div className="text-neon-blue text-xs truncate mb-2">{idea.machineName}</div>
+                              <p className="text-gray-500 text-xs line-clamp-2 mb-4 flex-grow">{idea.description}</p>
+                              <div className="flex gap-2 mt-auto pt-4 border-t border-gray-800/50">
+                                  <button onClick={() => startEdit(idea)} className="flex-1 text-xs bg-gray-800 hover:bg-gray-700 text-white py-1 rounded transition-colors">EDIT</button>
+                                  <button onClick={() => handleDelete(idea.id)} className="flex-1 text-xs bg-red-900/20 hover:bg-red-900/50 text-red-500 py-1 rounded transition-colors">DELETE</button>
+                              </div>
+                          </div>
+                      ))
+                  )}
+              </div>
+          ) : (
+              <form onSubmit={handleCreateOrUpdate} className="max-w-3xl mx-auto space-y-6 animate-[fadeIn_0.3s_ease-out]">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <NeonInput 
+                        label={t.placeholders.ideaTitle}
+                        value={formData.businessTitle || ''}
+                        onChange={e => setFormData({...formData, businessTitle: e.target.value})}
                         required
                     />
-                    <div className="grid grid-cols-2 gap-4">
-                        <NeonInput 
-                            label={t.investment}
-                            value={newIdea.priceRange || ''}
-                            onChange={e => setNewIdea({...newIdea, priceRange: e.target.value})}
-                            placeholder={t.placeholders.price}
-                        />
-                         <NeonInput 
-                            label={t.potential}
-                            value={newIdea.potentialRevenue || ''}
-                            onChange={e => setNewIdea({...newIdea, potentialRevenue: e.target.value})}
-                            placeholder={t.placeholders.revenue}
-                        />
-                    </div>
-                    <div className="mt-4">
-                        <NeonButton type="submit" fullWidth color="blue">{t.dashboard.createBtn}</NeonButton>
-                    </div>
-                </form>
-            </NeonCard>
-          </div>
-          
-          <div className="opacity-50 pointer-events-none">
-             {/* Placeholder for future charts/logs */}
-             <h3 className="text-xl font-bold text-gray-500 mb-4 uppercase">{t.dashboard.systemLogs}</h3>
-             <div className="bg-dark-card border border-gray-800 rounded-xl p-4 h-[400px] overflow-hidden font-mono text-xs text-green-900/50">
-                {Array.from({length: 20}).map((_, i) => (
-                    <div key={i} className="mb-2">> [SYSTEM] Generating node map for user_session_{Math.floor(Math.random()*1000)}... OK</div>
-                ))}
-             </div>
-          </div>
-      </div>
+                    <NeonInput 
+                        label={t.placeholders.machineName}
+                        value={formData.machineName || ''}
+                        onChange={e => setFormData({...formData, machineName: e.target.value})}
+                        required
+                    />
+                 </div>
+
+                 <NeonSelect 
+                    label={t.labels.industry}
+                    value={formData.industryId || INDUSTRIES[0].id}
+                    onChange={(e) => setFormData({...formData, industryId: e.target.value})}
+                    options={[...INDUSTRIES.map(i => ({ value: i.id, label: t.industries[i.id] || i.name })), { value: 'custom', label: 'Custom / Other' }]}
+                 />
+
+                 <NeonTextArea 
+                    label={t.placeholders.desc}
+                    value={formData.description || ''}
+                    onChange={e => setFormData({...formData, description: e.target.value})}
+                    required
+                    className="h-32"
+                 />
+
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <NeonInput 
+                        label={t.investment}
+                        value={formData.priceRange || ''}
+                        onChange={e => setFormData({...formData, priceRange: e.target.value})}
+                        placeholder="$2,000 - $5,000"
+                    />
+                    <NeonInput 
+                        label={t.potential}
+                        value={formData.potentialRevenue || ''}
+                        onChange={e => setFormData({...formData, potentialRevenue: e.target.value})}
+                        placeholder="$5,000/mo"
+                    />
+                    <NeonSelect 
+                        label="Sourcing Platform"
+                        value={formData.platformSource || 'Alibaba'}
+                        onChange={(e) => setFormData({...formData, platformSource: e.target.value as any})}
+                        options={[
+                            { value: 'Alibaba', label: 'Alibaba' },
+                            { value: 'Amazon', label: 'Amazon' },
+                            { value: 'Global Sources', label: 'Global Sources' }
+                        ]}
+                    />
+                 </div>
+
+                 <div className="pt-8 flex justify-end gap-4 border-t border-gray-800">
+                     <button type="button" onClick={() => setViewMode('list')} className="text-gray-400 hover:text-white uppercase text-sm font-bold tracking-widest px-6">
+                        Cancel
+                     </button>
+                     <NeonButton type="submit" color="blue" className="px-8">
+                        {isEditing ? 'Update Protocol' : 'Inject Idea'}
+                     </NeonButton>
+                 </div>
+              </form>
+          )}
+      </NeonCard>
     </div>
   );
 };

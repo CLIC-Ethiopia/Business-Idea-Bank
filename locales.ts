@@ -182,7 +182,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       loginBtn: "Initialize Session",
       googleBtn: "Continue with Google",
       fbBtn: "Continue with Facebook",
-      guestBtn: "Enter as Guest"
+      guestBtn: "Enter as Admin (Guest)"
     },
     dashboard: {
       title: "DASHBOARD",
@@ -366,7 +366,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       loginBtn: "ወደ ውስጥ ግባ",
       googleBtn: "በ Google ይቀጥሉ",
       fbBtn: "በ Facebook ይቀጥሉ",
-      guestBtn: "እንደ እንግዳ ይግቡ"
+      guestBtn: "እንደ እንግዳ ይግቡ (Admin)"
     },
     dashboard: {
       title: "ዳሽቦርድ",

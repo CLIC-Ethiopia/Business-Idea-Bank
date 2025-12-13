@@ -66,7 +66,8 @@ export enum AppState {
   SELECT_IDEA,
   LOADING_CANVAS,
   VIEW_CANVAS,
-  ABOUT
+  ABOUT,
+  ADMIN_DASHBOARD
 }
 
 export type Language = 'en' | 'am';

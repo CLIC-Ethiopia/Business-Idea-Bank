@@ -45,6 +45,12 @@ const InfoIcon = () => (
   </svg>
 );
 
+const AdminIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+  </svg>
+);
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [appState, setAppState] = useState<AppState>(AppState.LOGIN);
@@ -117,7 +123,7 @@ const App: React.FC = () => {
           id: 'guest',
           email: 'guest@neon.com',
           name: 'Guest Operative',
-          role: 'user',
+          role: 'admin', // GRANT ADMIN ROLE TO GUEST FOR DEMO
           profile: {
             name: 'Guest Operative',
             budget: '$1,000 - $5,000',
@@ -170,11 +176,14 @@ const App: React.FC = () => {
       };
     }
 
+    // Auto-detect admin role from email for simplicity
+    const role = authUser.email?.toLowerCase().includes('admin') ? 'admin' : 'user';
+
     setCurrentUser({
       id: authUser.id,
       email: authUser.email,
       name: finalProfile.name,
-      role: 'user', // Basic role for now
+      role: role, 
       profile: finalProfile
     });
     
@@ -516,8 +525,8 @@ const App: React.FC = () => {
                       <span className="text-neon-blue">ID</span>
                   </span>
                   
-                  {/* Nav Links */}
-                  <div className="hidden md:flex items-center gap-6 ml-8">
+                  {/* Nav Links - ALWAYS VISIBLE (removed hidden md:flex) */}
+                  <div className="flex items-center gap-6 ml-8 flex-wrap">
                      {/* Show Home/Profile only if logged in */}
                      {currentUser && (
                         <>
@@ -531,8 +540,16 @@ const App: React.FC = () => {
                             onClick={() => setAppState(AppState.DASHBOARD)}
                             className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
                         >
-                            <UserIcon /> {currentUser.role === 'admin' ? t.nav.admin : t.nav.profile}
+                            <UserIcon /> {t.nav.profile}
                         </button>
+                        {currentUser.role === 'admin' && (
+                            <button 
+                                onClick={() => setAppState(AppState.ADMIN_DASHBOARD)}
+                                className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.ADMIN_DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
+                            >
+                                <AdminIcon /> {t.nav.admin}
+                            </button>
+                        )}
                         </>
                      )}
                      {/* Always show About */}
@@ -975,17 +992,19 @@ const App: React.FC = () => {
           )}
 
           {appState === AppState.DASHBOARD && currentUser && (
-              currentUser.role === 'admin' 
-                  ? <AdminDashboard user={currentUser} onAddIdea={handleAdminAddIdea} t={t} />
-                  : <UserDashboard 
-                      user={currentUser} 
-                      savedIdeas={savedIdeas} 
-                      recommendedIdeas={recommendedIdeas}
-                      onViewIdea={handleViewDetails} 
-                      onGenerateRecommendations={handleGenerateRecommendations}
-                      isGeneratingRecs={isGeneratingRecs}
-                      t={t} 
-                    />
+             <UserDashboard 
+                 user={currentUser} 
+                 savedIdeas={savedIdeas} 
+                 recommendedIdeas={recommendedIdeas}
+                 onViewIdea={handleViewDetails} 
+                 onGenerateRecommendations={handleGenerateRecommendations}
+                 isGeneratingRecs={isGeneratingRecs}
+                 t={t} 
+             />
+          )}
+
+          {appState === AppState.ADMIN_DASHBOARD && currentUser && currentUser.role === 'admin' && (
+             <AdminDashboard user={currentUser} onAddIdea={handleAdminAddIdea} t={t} />
           )}
 
           {appState === AppState.SELECT_INDUSTRY && renderIndustrySelection()}
