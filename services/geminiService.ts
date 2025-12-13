@@ -216,3 +216,38 @@ export const generateCanvas = async (idea: BusinessIdea, language: Language): Pr
     return null;
   }
 };
+
+export const streamChat = async function* (
+    history: { role: 'user' | 'model', parts: [{ text: string }] }[],
+    newMessage: string,
+    context: string
+) {
+    const chat = ai.chats.create({
+        model: 'gemini-2.5-flash-lite', // Low latency model
+        history: history,
+        config: {
+            systemInstruction: `
+            You are "Prof. Fad", an eccentric, high-energy, futuristic AI business consultant for the NeonVentures app.
+            Your goal is to help users find machine-based business ideas and navigate the app.
+            
+            Personality:
+            - Use cyberpunk slang occasionally (e.g., "operative", "uplink", "synapse").
+            - Be concise and punchy. Maximum 2-3 sentences per response unless asked for detail.
+            - Extremely encouraging but realistic about business risks.
+            
+            Context:
+            ${context}
+            
+            If the user asks about the app, guide them to:
+            1. Select an industry to scan.
+            2. Or build a profile for personalized matches.
+            3. View details and business canvases for specific ideas.
+            `
+        }
+    });
+
+    const result = await chat.sendMessageStream({ message: newMessage });
+    for await (const chunk of result) {
+        yield chunk.text;
+    }
+};

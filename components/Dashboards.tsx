@@ -112,11 +112,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
             </h3>
             {isGeneratingRecs ? (
                <div className="h-48 flex items-center justify-center border border-gray-800 rounded-xl bg-dark-card">
-                 <span className="text-neon-pink animate-pulse">Scanning Neural Network for Matches...</span>
+                 <span className="text-neon-pink animate-pulse">{t.dashboard.scanningRecs}</span>
                </div>
             ) : recommendedIdeas.length === 0 ? (
                <div className="h-48 flex flex-col items-center justify-center border border-dashed border-gray-800 rounded-xl bg-dark-card text-gray-500">
-                  <p className="mb-2">Update your profile to receive AI-powered recommendations.</p>
+                  <p className="mb-2">{t.dashboard.updateProfileHint}</p>
                </div>
             ) : (
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -124,7 +124,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                     <NeonCard key={`rec-${idx}`} color="pink" className="flex flex-col">
                        <div className="flex justify-between items-start mb-2">
                           <h4 className="font-bold text-white text-md">{idea.businessTitle}</h4>
-                          <span className="text-[10px] bg-neon-pink text-white px-1.5 py-0.5 rounded">REC</span>
+                          <span className="text-[10px] bg-neon-pink text-white px-1.5 py-0.5 rounded uppercase">{t.dashboard.recTag}</span>
                        </div>
                        <p className="text-neon-blue text-xs mb-2">{idea.machineName}</p>
                        <p className="text-gray-400 text-xs mb-3 line-clamp-2">{idea.description}</p>
@@ -283,7 +283,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
           
           <div className="opacity-50 pointer-events-none">
              {/* Placeholder for future charts/logs */}
-             <h3 className="text-xl font-bold text-gray-500 mb-4 uppercase">System Logs</h3>
+             <h3 className="text-xl font-bold text-gray-500 mb-4 uppercase">{t.dashboard.systemLogs}</h3>
              <div className="bg-dark-card border border-gray-800 rounded-xl p-4 h-[400px] overflow-hidden font-mono text-xs text-green-900/50">
                 {Array.from({length: 20}).map((_, i) => (
                     <div key={i} className="mb-2">> [SYSTEM] Generating node map for user_session_{Math.floor(Math.random()*1000)}... OK</div>

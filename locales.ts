@@ -8,6 +8,7 @@ interface LocaleStrings {
   backToSectors: string;
   backToHome: string;
   backToIdeas: string;
+  generateMoreBtn: string;
   scanComplete: (count: number) => string;
   investment: string;
   potential: string;
@@ -52,6 +53,16 @@ interface LocaleStrings {
     experience: string;
     updateBtn: string;
     recommended: string;
+    scanningRecs: string;
+    updateProfileHint: string;
+    recTag: string;
+    systemLogs: string;
+  };
+  chat: {
+    header: string;
+    placeholder: string;
+    greeting: string;
+    error: string;
   };
   about: {
     intro: string;
@@ -98,6 +109,7 @@ interface LocaleStrings {
   submitProfileBtn: string;
   loading: {
     scanning: (sector: string) => string;
+    scanningWeb: string;
     profile: string;
     canvas: string;
     details: string;
@@ -129,6 +141,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     backToSectors: "Back to Sectors",
     backToHome: "Back to Home",
     backToIdeas: "Back to Ideas",
+    generateMoreBtn: "Generate More Ideas",
     scanComplete: (c) => `Scan Complete: ${c} Opportunities Found`,
     investment: "Investment",
     potential: "Potential",
@@ -172,7 +185,17 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       education: "Education / Training",
       experience: "Professional Experience",
       updateBtn: "Update & Generate Recommendations",
-      recommended: "AI Recommended Opportunities"
+      recommended: "AI Recommended Opportunities",
+      scanningRecs: "Scanning Neural Network for Matches...",
+      updateProfileHint: "Update your profile to receive AI-powered recommendations.",
+      recTag: "REC",
+      systemLogs: "System Logs"
+    },
+    chat: {
+        header: "PROF. FAD AI",
+        placeholder: "Ask Prof. Fad...",
+        greeting: "Greetings, Operative! Prof. Fad here. Need a business breakthrough?",
+        error: "System glitch! Re-aligning neural pathways..."
     },
     about: {
       intro: "NeonVentures is a futuristic intelligence platform designed to identify tangible, machine-based micro-business opportunities for the modern entrepreneur.",
@@ -238,6 +261,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     submitProfileBtn: "Analyze & Generate Matches",
     loading: {
       scanning: (s) => `Scanning Global Markets for ${s}...`,
+      scanningWeb: "Scanning Deep Web...",
       profile: "Analyzing Profile & Matching Technology...",
       canvas: "Generating Business Model Strategy...",
       details: "Fetching Business Intelligence..."
@@ -291,6 +315,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     backToSectors: "ወደ ዘርፎች ይመለሱ",
     backToHome: "ወደ መነሻ ገጽ ይመለሱ",
     backToIdeas: "ወደ ሀሳቦች ይመለሱ",
+    generateMoreBtn: "ተጨማሪ ሀሳቦችን አፍልቅ",
     scanComplete: (c) => `ፍተሻ ተጠናቋል: ${c} እድሎች ተገኝተዋል`,
     investment: "መነሻ ካፒታል",
     potential: "ይቻላል ገቢ",
@@ -334,7 +359,17 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       education: "ትምህርት / ስልጠና",
       experience: "የስራ ልምድ",
       updateBtn: "አዘምን እና ምክሮችን አግኝ",
-      recommended: "AI የተጠቆሙ እድሎች"
+      recommended: "AI የተጠቆሙ እድሎች",
+      scanningRecs: "የነርቭ አውታረ መረብን ለተዛማጅ በመቃኘት ላይ...",
+      updateProfileHint: "በ AI የተጎለበተ ምክሮችን ለማግኘት መገለጫዎን ያዘምኑ።",
+      recTag: "ምክር",
+      systemLogs: "የስርዓት ምዝግብ ማስታወሻዎች"
+    },
+    chat: {
+        header: "ፕሮፌሰር ፋድ AI",
+        placeholder: "ፕሮፌሰር ፋድን ይጠይቁ...",
+        greeting: "ሰላም ኦፕሬቲቭ! ፕሮፌሰር ፋድ ነኝ። የንግድ ግኝት ይፈልጋሉ?",
+        error: "የስርዓት ችግር! የነርቭ መስመሮችን እንደገና በማስተካከል ላይ..."
     },
     about: {
       intro: "ኒዮን ቬንቸርስ ለዘመናዊ ኢንተርፕረነሮች ተጨባጭ እና ማሽን ላይ የተመሰረቱ ጥቃቅን የንግድ እድሎችን ለመለየት የተነደፈ የወደፊት ኢንተለጀንስ መድረክ ነው።",
@@ -400,6 +435,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     submitProfileBtn: "ተንትን እና ተዛማጅ ሀሳቦችን አፍልቅ",
     loading: {
       scanning: (s) => `ለ ${s} ዓለም አቀፍ ገበያዎችን በመቃኘት ላይ...`,
+      scanningWeb: "ድብቅ ድርን በመቃኘት ላይ...",
       profile: "መገለጫን በመተንተን እና ቴክኖሎጂን በማዛመድ ላይ...",
       canvas: "የንግድ ሞዴል ስትራቴጂ በማመንጨት ላይ...",
       details: "የንግድ መረጃን በማምጣት ላይ..."

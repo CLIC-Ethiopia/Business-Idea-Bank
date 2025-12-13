@@ -8,6 +8,7 @@ import { Auth } from './components/Auth';
 import { UserDashboard, AdminDashboard } from './components/Dashboards';
 import { About } from './components/About';
 import { supabase } from './services/supabaseClient';
+import { ChatWidget } from './components/ChatWidget';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -50,6 +51,7 @@ const App: React.FC = () => {
   const [canvas, setCanvas] = useState<BusinessCanvas | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Database State
   const [savedIdeas, setSavedIdeas] = useState<BusinessIdea[]>([]);
@@ -354,6 +356,37 @@ const App: React.FC = () => {
       setAppState(AppState.USER_PROFILE);
     }
   };
+  
+  const handleGenerateMore = async () => {
+    setIsLoadingMore(true);
+    setError(null);
+    try {
+        let newIdeas: BusinessIdea[] = [];
+        
+        if (selectedIndustry?.id === 'custom') {
+             newIdeas = await generatePersonalizedIdeas(userProfile, language);
+        } else if (selectedIndustry) {
+             const industryName = t.industries[selectedIndustry.id] || selectedIndustry.name;
+             newIdeas = await generateIdeas(industryName, language);
+        }
+
+        if (newIdeas.length === 0) {
+            // No new ideas found
+        } else {
+            // Append new ideas to the existing list, avoiding duplicates by business title
+            setIdeas(prev => {
+                const existingTitles = new Set(prev.map(i => i.businessTitle));
+                const filteredNew = newIdeas.filter(i => !existingTitles.has(i.businessTitle));
+                return [...prev, ...filteredNew];
+            });
+        }
+    } catch (e) {
+        console.error("Error generating more ideas:", e);
+        setError(t.errors.connection);
+    } finally {
+        setIsLoadingMore(false);
+    }
+  };
 
   const handleViewDetails = async (idea: BusinessIdea) => {
     setDetailIdea(idea);
@@ -613,17 +646,19 @@ const App: React.FC = () => {
   const renderIdeaSelection = () => (
     <div className="container mx-auto px-4 py-8">
       <div className="flex justify-between items-center mb-8">
-        <button onClick={reset} className="flex items-center text-gray-400 hover:text-white transition-colors">
-          <ArrowLeftIcon />
-          <span className="ml-2 uppercase tracking-widest">{t.backToSectors}</span>
-        </button>
+        <div className="flex gap-4 items-center">
+            <button onClick={reset} className="flex items-center text-gray-400 hover:text-white transition-colors">
+            <ArrowLeftIcon />
+            <span className="ml-2 uppercase tracking-widest">{t.backToSectors}</span>
+            </button>
+        </div>
         <div className="text-right">
           <h2 className="text-neon-blue text-xl font-bold uppercase">{selectedIndustry?.id === 'custom' ? t.industries['custom'] : (selectedIndustry ? t.industries[selectedIndustry.id] : '')}</h2>
           <p className="text-xs text-gray-500">{t.scanComplete(ideas.length)}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
         {ideas.map((idea, idx) => {
           const isSaved = savedIdeas.some(i => i.businessTitle === idea.businessTitle || i.id === idea.id);
           return (
@@ -680,6 +715,28 @@ const App: React.FC = () => {
           );
         })}
       </div>
+      
+      <div className="flex justify-center mb-8">
+        <NeonButton 
+            color="green" 
+            onClick={handleGenerateMore} 
+            disabled={isLoadingMore}
+            className="flex items-center gap-2"
+        >
+            {isLoadingMore ? (
+                <>
+                    <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                    <span>{t.loading.scanningWeb}</span>
+                </>
+            ) : (
+                <>
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    <span>{t.generateMoreBtn}</span>
+                </>
+            )}
+        </NeonButton>
+      </div>
+      
     </div>
   );
 
@@ -864,6 +921,17 @@ const App: React.FC = () => {
             )}
           </NeonModal>
         </main>
+
+        {/* Chat Widget - Always rendered but only visible if currentUser is present */}
+        {currentUser && (
+            <ChatWidget 
+                appState={appState} 
+                selectedIndustry={selectedIndustry} 
+                selectedIdea={selectedIdea} 
+                currentUser={currentUser}
+                t={t}
+            />
+        )}
       </div>
     </div>
   );
