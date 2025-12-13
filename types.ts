@@ -12,6 +12,7 @@ export interface BusinessIdea {
   priceRange: string;
   platformSource: 'Alibaba' | 'Amazon' | 'Global Sources';
   potentialRevenue: string;
+  industryId?: string; // Optional linkage to industry
 }
 
 export interface BusinessDetails {
@@ -39,11 +40,24 @@ export interface UserProfile {
   budget: string;
   skills: string;
   interests: string;
+  education: string;
+  experience: string;
   riskTolerance: 'Low' | 'Medium' | 'High';
   timeCommitment: 'Part-time' | 'Full-time';
 }
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'user' | 'admin';
+  avatar?: string;
+  profile?: UserProfile;
+}
+
 export enum AppState {
+  LOGIN,
+  DASHBOARD,
   SELECT_INDUSTRY,
   USER_PROFILE,
   LOADING_PROFILE_IDEAS,

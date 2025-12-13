@@ -13,9 +13,38 @@ interface LocaleStrings {
   potential: string;
   analyzeBtn: string;
   detailsBtn: string;
+  saveBtn: string;
+  savedBtn: string;
   closeBtn: string;
   profileTitle: string;
   profileSubtitle: string;
+  login: {
+    title: string;
+    subtitle: string;
+    emailLabel: string;
+    passLabel: string;
+    loginBtn: string;
+    googleBtn: string;
+    fbBtn: string;
+    guestBtn: string;
+  };
+  dashboard: {
+    title: string;
+    welcome: (name: string) => string;
+    savedIdeas: string;
+    noSaved: string;
+    adminStats: string;
+    addIdea: string;
+    totalUsers: string;
+    ideasGen: string;
+    activeSessions: string;
+    createBtn: string;
+    profileSection: string;
+    education: string;
+    experience: string;
+    updateBtn: string;
+    recommended: string;
+  };
   labels: {
     name: string;
     budget: string;
@@ -23,11 +52,21 @@ interface LocaleStrings {
     interests: string;
     risk: string;
     time: string;
+    industry: string;
   };
   placeholders: {
     name: string;
     skills: string;
     interests: string;
+    email: string;
+    password: string;
+    ideaTitle: string;
+    machineName: string;
+    desc: string;
+    price: string;
+    revenue: string;
+    education: string;
+    experience: string;
   };
   options: {
     budget: Record<string, string>;
@@ -55,6 +94,7 @@ interface LocaleStrings {
     connection: string;
     canvasFail: string;
     detailsFail: string;
+    loginFail: string;
   }
 }
 
@@ -72,21 +112,60 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     potential: "Potential",
     analyzeBtn: "Analyze Model",
     detailsBtn: "View Details",
+    saveBtn: "Save Idea",
+    savedBtn: "Saved",
     closeBtn: "Close",
     profileTitle: "ENTREPRENEUR PROFILE",
     profileSubtitle: "Calibrate the AI to match your capabilities with market opportunities.",
+    login: {
+      title: "ACCESS TERMINAL",
+      subtitle: "Authenticate to access the Idea Bank",
+      emailLabel: "Identity / Email",
+      passLabel: "Access Code / Password",
+      loginBtn: "Initialize Session",
+      googleBtn: "Continue with Google",
+      fbBtn: "Continue with Facebook",
+      guestBtn: "Enter as Guest"
+    },
+    dashboard: {
+      title: "DASHBOARD",
+      welcome: (n) => `Welcome back, Commander ${n}`,
+      savedIdeas: "Saved Business Concepts",
+      noSaved: "No concepts archived yet. Return to the Scanner.",
+      adminStats: "System Statistics",
+      addIdea: "Inject New Concept",
+      totalUsers: "Total Operatives",
+      ideasGen: "Concepts Generated",
+      activeSessions: "Active Uplinks",
+      createBtn: "Upload to Bank",
+      profileSection: "Operative Data & Capabilities",
+      education: "Education / Training",
+      experience: "Professional Experience",
+      updateBtn: "Update & Generate Recommendations",
+      recommended: "AI Recommended Opportunities"
+    },
     labels: {
       name: "Name",
       budget: "Estimated Budget",
       skills: "Key Skills",
       interests: "Interests & Hobbies",
       risk: "Risk Tolerance",
-      time: "Time Commitment"
+      time: "Time Commitment",
+      industry: "Industry Sector"
     },
     placeholders: {
       name: "Enter your alias",
       skills: "e.g. Graphic Design, Welding, Coding...",
-      interests: "e.g. 3D Printing, Outdoors..."
+      interests: "e.g. 3D Printing, Outdoors...",
+      email: "operative@neon.com",
+      password: "••••••••",
+      ideaTitle: "Business Title",
+      machineName: "Machine Name",
+      desc: "Brief description...",
+      price: "$2,000 - $5,000",
+      revenue: "$5,000/month",
+      education: "e.g. BSc Mechanical Engineering, Self-taught Python",
+      experience: "e.g. 5 years in automotive repair, 2 years retail"
     },
     options: {
       budget: {
@@ -149,7 +228,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       noIdeas: "AI could not generate ideas. Please try again.",
       connection: "Connection error. Check API Key.",
       canvasFail: "Failed to generate canvas.",
-      detailsFail: "Failed to load details."
+      detailsFail: "Failed to load details.",
+      loginFail: "Authentication Failed. Use 'admin'/'admin' or 'user'/'user'."
     }
   },
   am: {
@@ -165,21 +245,60 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     potential: "ይቻላል ገቢ",
     analyzeBtn: "ሞዴሉን ይተንትኑ",
     detailsBtn: "ዝርዝር ይመልከቱ",
+    saveBtn: "አስቀምጥ",
+    savedBtn: "ተቀምጧል",
     closeBtn: "ዝጋ",
     profileTitle: "የኢንተርፕረነር መገለጫ",
     profileSubtitle: "ችሎታዎን ከገበያ እድሎች ጋር ለማዛመድ AI ያስተካክሉ።",
+    login: {
+      title: "መግቢያ ተርሚናል",
+      subtitle: "የሀሳብ ባንኩን ለመጠቀም ማንነትዎን ያረጋግጡ",
+      emailLabel: "ኢሜይል",
+      passLabel: "የይለፍ ቃል",
+      loginBtn: "ወደ ውስጥ ግባ",
+      googleBtn: "በ Google ይቀጥሉ",
+      fbBtn: "በ Facebook ይቀጥሉ",
+      guestBtn: "እንደ እንግዳ ይግቡ"
+    },
+    dashboard: {
+      title: "ዳሽቦርድ",
+      welcome: (n) => `እንኳን በደህና መጡ፣ ${n}`,
+      savedIdeas: "የተቀመጡ የንግድ ሀሳቦች",
+      noSaved: "እስካሁን ምንም ሀሳቦች አልተቀመጡም። ወደ ስካነሩ ይመለሱ።",
+      adminStats: "የስርዓት ስታቲስቲክስ",
+      addIdea: "አዲስ ሀሳብ አስገባ",
+      totalUsers: "ጠቅላላ ተጠቃሚዎች",
+      ideasGen: "የተፈጠሩ ሀሳቦች",
+      activeSessions: "ንቁ ተጠቃሚዎች",
+      createBtn: "ወደ ባንክ ይጫኑ",
+      profileSection: "የተጠቃሚ መረጃ እና ችሎታዎች",
+      education: "ትምህርት / ስልጠና",
+      experience: "የስራ ልምድ",
+      updateBtn: "አዘምን እና ምክሮችን አግኝ",
+      recommended: "AI የተጠቆሙ እድሎች"
+    },
     labels: {
       name: "ስም",
       budget: "የተገመተ በጀት",
       skills: "ቁልፍ ክህሎቶች",
       interests: "ፍላጎቶች እና በትርፍ ጊዜ ማሳለፊያዎች",
       risk: "የአደጋ መቻቻል",
-      time: "የጊዜ ቁርጠኝነት"
+      time: "የጊዜ ቁርጠኝነት",
+      industry: "የኢንዱስትሪ ዘርፍ"
     },
     placeholders: {
       name: "የእርስዎን ስም ያስገቡ",
       skills: "ለምሳሌ ግራፊክ ዲዛይን ፣ ብየዳ ፣ ኮዲንግ...",
-      interests: "ለምሳሌ 3D ህትመት ፣ ፋሽን..."
+      interests: "ለምሳሌ 3D ህትመት ፣ ፋሽን...",
+      email: "user@neon.com",
+      password: "••••••••",
+      ideaTitle: "የንግድ ስም",
+      machineName: "የማሽን ስም",
+      desc: "አጭር መግለጫ...",
+      price: "$2,000 - $5,000",
+      revenue: "$5,000/በወር",
+      education: "ለምሳሌ BSc ምህንድስና",
+      experience: "ለምሳሌ የ 5 ዓመት የተሽከርካሪ ጥገና"
     },
     options: {
       budget: {
@@ -242,7 +361,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       noIdeas: "AI ሀሳቦችን ማመንጨት አልቻለም። እባክዎ እንደገና ይሞክሩ።",
       connection: "የግንኙነት ችግር። እባክዎ የበይነመረብ ግንኙነትዎን ያረጋግጡ።",
       canvasFail: "የንግድ ሞዴል ማመንጨት አልተሳካም።",
-      detailsFail: "ዝርዝር መረጃን መጫን አልተሳካም።"
+      detailsFail: "ዝርዝር መረጃን መጫን አልተሳካም።",
+      loginFail: "የተሳሳተ መረጃ። 'admin'/'admin' ወይም 'user'/'user' ይጠቀሙ።"
     }
   }
 };

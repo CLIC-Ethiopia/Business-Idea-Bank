@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { INDUSTRIES } from './constants';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, LoadingScan, NeonModal } from './components/NeonUI';
 import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails } from './services/geminiService';
-import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails } from './types';
+import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User } from './types';
 import { TRANSLATIONS } from './locales';
+import { Auth } from './components/Auth';
+import { UserDashboard, AdminDashboard } from './components/Dashboards';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -24,8 +26,15 @@ const GlobeIcon = () => (
   </svg>
 );
 
+const HomeIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+);
+
 const App: React.FC = () => {
-  const [appState, setAppState] = useState<AppState>(AppState.SELECT_INDUSTRY);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [appState, setAppState] = useState<AppState>(AppState.LOGIN);
   const [language, setLanguage] = useState<Language>('en');
   const [selectedIndustry, setSelectedIndustry] = useState<Industry | null>(null);
   const [ideas, setIdeas] = useState<BusinessIdea[]>([]);
@@ -33,23 +42,91 @@ const App: React.FC = () => {
   const [canvas, setCanvas] = useState<BusinessCanvas | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Data persistence for saved ideas and custom admin ideas (In Memory)
+  const [savedIdeas, setSavedIdeas] = useState<Record<string, BusinessIdea[]>>({});
+  const [customIdeas, setCustomIdeas] = useState<BusinessIdea[]>([]);
+  
+  // Dashboard Recommendation State
+  const [recommendedIdeas, setRecommendedIdeas] = useState<Record<string, BusinessIdea[]>>({});
+  const [isGeneratingRecs, setIsGeneratingRecs] = useState(false);
+
   // Details Modal State
   const [detailIdea, setDetailIdea] = useState<BusinessIdea | null>(null);
   const [businessDetails, setBusinessDetails] = useState<BusinessDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
-  // User Profile State
+  // User Profile State (for idea generation wizard)
   const [userProfile, setUserProfile] = useState<UserProfile>({
     name: '',
     budget: '$1,000 - $5,000',
     skills: '',
     interests: '',
+    education: '',
+    experience: '',
     riskTolerance: 'Medium',
     timeCommitment: 'Part-time'
   });
 
   const t = TRANSLATIONS[language];
 
+  // Auth Handlers
+  const handleLogin = (user: User) => {
+      setCurrentUser(user);
+      if (user.role === 'admin') {
+          setAppState(AppState.DASHBOARD);
+      } else {
+          setAppState(AppState.SELECT_INDUSTRY);
+      }
+      setError(null);
+  };
+
+  const handleLogout = () => {
+      setCurrentUser(null);
+      setAppState(AppState.LOGIN);
+      reset();
+  };
+
+  const handleSaveIdea = (idea: BusinessIdea) => {
+      if (!currentUser) return;
+      setSavedIdeas(prev => {
+          const userIdeas = prev[currentUser.id] || [];
+          // Avoid duplicates
+          if (userIdeas.find(i => i.id === idea.id)) return prev;
+          return {
+              ...prev,
+              [currentUser.id]: [...userIdeas, idea]
+          };
+      });
+  };
+
+  const handleAdminAddIdea = (idea: BusinessIdea) => {
+      setCustomIdeas(prev => [idea, ...prev]);
+  };
+
+  const handleGenerateRecommendations = async (profile: UserProfile) => {
+      if (!currentUser) return;
+      
+      // Update local profile state as well in case they go to wizard later
+      setUserProfile(profile);
+      
+      // Update user object locally (optional, for session persistence in a real app)
+      setCurrentUser({ ...currentUser, profile });
+
+      setIsGeneratingRecs(true);
+      try {
+        const recs = await generatePersonalizedIdeas(profile, language);
+        setRecommendedIdeas(prev => ({
+            ...prev,
+            [currentUser.id]: recs
+        }));
+      } catch (e) {
+          console.error(e);
+      } finally {
+          setIsGeneratingRecs(false);
+      }
+  };
+
+  // Navigation Logic
   const toggleLanguage = () => {
     setLanguage(prev => prev === 'en' ? 'am' : 'en');
   };
@@ -61,11 +138,17 @@ const App: React.FC = () => {
     try {
       const industryName = t.industries[industry.id] || industry.name;
       const generatedIdeas = await generateIdeas(industryName, language);
-      if (generatedIdeas.length === 0) {
+      
+      // Inject Admin Custom Ideas if they match the selected industry (Simple simulation)
+      const relevantCustomIdeas = customIdeas.filter(i => i.industryId === industry.id);
+      
+      const allIdeas = [...relevantCustomIdeas, ...generatedIdeas];
+
+      if (allIdeas.length === 0) {
         setError(t.errors.noIdeas);
         setAppState(AppState.SELECT_INDUSTRY);
       } else {
-        setIdeas(generatedIdeas);
+        setIdeas(allIdeas);
         setAppState(AppState.SELECT_IDEA);
       }
     } catch (e) {
@@ -103,7 +186,6 @@ const App: React.FC = () => {
     try {
       const details = await generateBusinessDetails(idea, language);
       if (!details) {
-        // Fallback or error
         setLoadingDetails(false);
       } else {
         setBusinessDetails(details);
@@ -158,13 +240,45 @@ const App: React.FC = () => {
   };
 
   // Render Functions
+
+  const renderNavBar = () => {
+      if (!currentUser) return null;
+      return (
+          <div className="flex justify-between items-center p-4 bg-black border-b border-gray-900 sticky top-0 z-20 backdrop-blur-md bg-opacity-80">
+              <div className="flex items-center gap-4">
+                  <span className="font-orbitron font-bold text-xl tracking-tighter">
+                      <span className="text-white">NEON</span>
+                      <span className="text-neon-blue">ID</span>
+                  </span>
+                  {/* Nav Links */}
+                  <button 
+                    onClick={() => setAppState(AppState.SELECT_INDUSTRY)}
+                    className={`text-sm uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState !== AppState.DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
+                  >
+                      <HomeIcon /> {t.scanBtn}
+                  </button>
+                  <button 
+                    onClick={() => setAppState(AppState.DASHBOARD)}
+                    className={`text-sm uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
+                  >
+                      <UserIcon /> {currentUser.role === 'admin' ? 'Admin Deck' : 'Profile'}
+                  </button>
+              </div>
+              <div className="flex items-center gap-4">
+                  <button onClick={toggleLanguage} className="text-gray-400 hover:text-white flex items-center gap-1">
+                      <GlobeIcon /> <span className="text-xs uppercase">{language}</span>
+                  </button>
+                  <button onClick={handleLogout} className="text-red-500 hover:text-red-400 text-xs uppercase font-bold tracking-widest border border-red-900 px-3 py-1 rounded">
+                      Log Out
+                  </button>
+              </div>
+          </div>
+      )
+  }
+
   const renderIndustrySelection = () => (
     <div className="container mx-auto px-4 py-12">
       <div className="flex justify-end mb-4 gap-4">
-        <NeonButton onClick={toggleLanguage} color="blue" className="flex items-center gap-2">
-          <GlobeIcon />
-          <span>{language === 'en' ? 'አማርኛ' : 'English'}</span>
-        </NeonButton>
         <NeonButton onClick={() => setAppState(AppState.USER_PROFILE)} color="green" className="flex items-center gap-2">
           <UserIcon />
           <span>{t.buildProfileBtn}</span>
@@ -212,10 +326,6 @@ const App: React.FC = () => {
           <ArrowLeftIcon />
           <span className="ml-2 uppercase tracking-widest">{t.backToHome}</span>
         </button>
-        <NeonButton onClick={toggleLanguage} color="blue" className="flex items-center gap-2 py-2 px-4 text-xs">
-          <GlobeIcon />
-          <span>{language === 'en' ? 'አማርኛ' : 'English'}</span>
-        </NeonButton>
       </div>
 
       <div className="text-center mb-8">
@@ -309,110 +419,62 @@ const App: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {ideas.map((idea, idx) => (
-          <NeonCard key={idx} color="pink" className="flex flex-col h-full" hoverEffect={false}>
-            <div className="relative h-48 mb-4 rounded-lg overflow-hidden border border-gray-800">
-               {/* Using simulated images since we can't real-time scrape */}
-              <img 
-                src={`https://picsum.photos/400/300?random=${idx}`} 
-                alt={idea.machineName} 
-                className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity"
-              />
-              <div className="absolute top-2 right-2 bg-black/80 text-neon-pink text-xs font-bold px-2 py-1 rounded border border-neon-pink">
-                {idea.platformSource}
-              </div>
-            </div>
-
-            <h3 className="text-2xl font-bold text-white mb-2 leading-tight">{idea.businessTitle}</h3>
-            <div className="text-neon-blue text-sm font-bold mb-4 uppercase tracking-wider">
-              {idea.machineName}
-            </div>
-            
-            <p className="text-gray-400 text-sm flex-grow mb-6 leading-relaxed">
-              {idea.description}
-            </p>
-
-            <div className="border-t border-gray-800 pt-4 mt-auto space-y-3">
-              <div className="flex justify-between items-end mb-2">
-                <div>
-                  <div className="text-xs text-gray-500 uppercase">{t.investment}</div>
-                  <div className="text-neon-green font-bold">{idea.priceRange}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs text-gray-500 uppercase">{t.potential}</div>
-                  <div className="text-white font-bold">{idea.potentialRevenue}</div>
+        {ideas.map((idea, idx) => {
+          const isSaved = currentUser && savedIdeas[currentUser.id]?.find(i => i.id === idea.id);
+          return (
+            <NeonCard key={idx} color="pink" className="flex flex-col h-full" hoverEffect={false}>
+              <div className="relative h-48 mb-4 rounded-lg overflow-hidden border border-gray-800">
+                <img 
+                  src={`https://picsum.photos/400/300?random=${idx}`} 
+                  alt={idea.machineName} 
+                  className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity"
+                />
+                <div className="absolute top-2 right-2 bg-black/80 text-neon-pink text-xs font-bold px-2 py-1 rounded border border-neon-pink">
+                  {idea.platformSource}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <NeonButton color="blue" onClick={() => handleViewDetails(idea)} className="text-xs py-2 px-2">
-                  {t.detailsBtn}
-                </NeonButton>
-                <NeonButton color="pink" onClick={() => handleIdeaSelect(idea)} className="text-xs py-2 px-2">
-                  {t.analyzeBtn}
-                </NeonButton>
+
+              <h3 className="text-2xl font-bold text-white mb-2 leading-tight">{idea.businessTitle}</h3>
+              <div className="text-neon-blue text-sm font-bold mb-4 uppercase tracking-wider">
+                {idea.machineName}
               </div>
-            </div>
-          </NeonCard>
-        ))}
+              
+              <p className="text-gray-400 text-sm flex-grow mb-6 leading-relaxed">
+                {idea.description}
+              </p>
+
+              <div className="border-t border-gray-800 pt-4 mt-auto space-y-3">
+                <div className="flex justify-between items-end mb-2">
+                  <div>
+                    <div className="text-xs text-gray-500 uppercase">{t.investment}</div>
+                    <div className="text-neon-green font-bold">{idea.priceRange}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-gray-500 uppercase">{t.potential}</div>
+                    <div className="text-white font-bold">{idea.potentialRevenue}</div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <NeonButton color="blue" onClick={() => handleViewDetails(idea)} className="text-xs py-2 px-1 col-span-1">
+                    {t.detailsBtn}
+                  </NeonButton>
+                  <NeonButton color="pink" onClick={() => handleIdeaSelect(idea)} className="text-xs py-2 px-1 col-span-1">
+                    {t.analyzeBtn}
+                  </NeonButton>
+                  <NeonButton 
+                    color="green" 
+                    onClick={() => handleSaveIdea(idea)} 
+                    disabled={!!isSaved}
+                    className={`text-xs py-2 px-1 col-span-1 ${isSaved ? 'opacity-50' : ''}`}
+                  >
+                    {isSaved ? t.savedBtn : t.saveBtn}
+                  </NeonButton>
+                </div>
+              </div>
+            </NeonCard>
+          );
+        })}
       </div>
-      
-      {/* Detail Modal */}
-      <NeonModal 
-        isOpen={!!detailIdea} 
-        onClose={closeDetails} 
-        title={detailIdea?.businessTitle}
-      >
-        {loadingDetails ? (
-           <div className="py-12">
-             <LoadingScan text={t.loading.details} />
-           </div>
-        ) : businessDetails ? (
-           <div className="space-y-6">
-              <div>
-                <h4 className="text-neon-blue font-bold uppercase mb-2 text-sm">{t.detailsSections.audience}</h4>
-                <p className="text-gray-300">{businessDetails.targetAudience}</p>
-              </div>
-
-              <div>
-                <h4 className="text-neon-purple font-bold uppercase mb-2 text-sm">{t.detailsSections.requirements}</h4>
-                <ul className="list-disc list-inside text-gray-300 space-y-1">
-                  {businessDetails.operationalRequirements.map((r, i) => <li key={i}>{r}</li>)}
-                </ul>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div className="bg-green-900/20 p-4 rounded border border-green-900">
-                    <h4 className="text-neon-green font-bold uppercase mb-2 text-sm">{t.detailsSections.pros}</h4>
-                    <ul className="space-y-1">
-                      {businessDetails.pros.map((p, i) => <li key={i} className="text-sm text-gray-300 flex items-start"><span className="text-neon-green mr-2">+</span>{p}</li>)}
-                    </ul>
-                 </div>
-                 <div className="bg-red-900/20 p-4 rounded border border-red-900">
-                    <h4 className="text-red-400 font-bold uppercase mb-2 text-sm">{t.detailsSections.cons}</h4>
-                     <ul className="space-y-1">
-                      {businessDetails.cons.map((c, i) => <li key={i} className="text-sm text-gray-300 flex items-start"><span className="text-red-400 mr-2">-</span>{c}</li>)}
-                    </ul>
-                 </div>
-              </div>
-
-              <div>
-                <h4 className="text-neon-pink font-bold uppercase mb-2 text-sm">{t.detailsSections.marketing}</h4>
-                <p className="text-gray-300 italic border-l-2 border-neon-pink pl-4">{businessDetails.marketingQuickTip}</p>
-              </div>
-
-              <div className="pt-4 border-t border-gray-700 flex justify-end gap-4">
-                 <button onClick={closeDetails} className="text-gray-400 hover:text-white uppercase text-sm font-bold tracking-wider px-4">
-                   {t.closeBtn}
-                 </button>
-                 <NeonButton color="pink" onClick={() => detailIdea && handleIdeaSelect(detailIdea)}>
-                   {t.analyzeBtn}
-                 </NeonButton>
-              </div>
-           </div>
-        ) : (
-          <div className="text-red-500">{t.errors.detailsFail}</div>
-        )}
-      </NeonModal>
     </div>
   );
 
@@ -496,26 +558,107 @@ const App: React.FC = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-neon-purple rounded-full opacity-5 blur-[120px]"></div>
       </div>
 
-      <div className="relative z-10">
-        {appState === AppState.SELECT_INDUSTRY && renderIndustrySelection()}
+      <div className="relative z-10 flex flex-col min-h-screen">
         
-        {appState === AppState.USER_PROFILE && renderUserProfile()}
+        {renderNavBar()}
 
-        {(appState === AppState.LOADING_IDEAS || appState === AppState.LOADING_PROFILE_IDEAS) && (
-          <LoadingScan text={
-            appState === AppState.LOADING_PROFILE_IDEAS 
-            ? t.loading.profile 
-            : t.loading.scanning(selectedIndustry ? (t.industries[selectedIndustry.id] || selectedIndustry.name) : '')
-          } />
-        )}
-        
-        {appState === AppState.SELECT_IDEA && renderIdeaSelection()}
-        
-        {appState === AppState.LOADING_CANVAS && (
-          <LoadingScan text={t.loading.canvas} />
-        )}
-        
-        {appState === AppState.VIEW_CANVAS && renderBusinessCanvas()}
+        <main className="flex-grow">
+          {appState === AppState.LOGIN && (
+              <Auth onLogin={handleLogin} t={t} />
+          )}
+
+          {appState === AppState.DASHBOARD && currentUser && (
+              currentUser.role === 'admin' 
+                  ? <AdminDashboard user={currentUser} onAddIdea={handleAdminAddIdea} t={t} />
+                  : <UserDashboard 
+                      user={currentUser} 
+                      savedIdeas={savedIdeas[currentUser.id] || []} 
+                      recommendedIdeas={recommendedIdeas[currentUser.id] || []}
+                      onViewIdea={handleViewDetails} 
+                      onGenerateRecommendations={handleGenerateRecommendations}
+                      isGeneratingRecs={isGeneratingRecs}
+                      t={t} 
+                    />
+          )}
+
+          {appState === AppState.SELECT_INDUSTRY && renderIndustrySelection()}
+          
+          {appState === AppState.USER_PROFILE && renderUserProfile()}
+
+          {(appState === AppState.LOADING_IDEAS || appState === AppState.LOADING_PROFILE_IDEAS) && (
+            <LoadingScan text={
+              appState === AppState.LOADING_PROFILE_IDEAS 
+              ? t.loading.profile 
+              : t.loading.scanning(selectedIndustry ? (t.industries[selectedIndustry.id] || selectedIndustry.name) : '')
+            } />
+          )}
+          
+          {appState === AppState.SELECT_IDEA && renderIdeaSelection()}
+          
+          {appState === AppState.LOADING_CANVAS && (
+            <LoadingScan text={t.loading.canvas} />
+          )}
+          
+          {appState === AppState.VIEW_CANVAS && renderBusinessCanvas()}
+
+          {/* Global Details Modal */}
+          <NeonModal 
+            isOpen={!!detailIdea} 
+            onClose={closeDetails} 
+            title={detailIdea?.businessTitle}
+          >
+            {loadingDetails ? (
+               <div className="py-12">
+                 <LoadingScan text={t.loading.details} />
+               </div>
+            ) : businessDetails ? (
+               <div className="space-y-6">
+                  <div>
+                    <h4 className="text-neon-blue font-bold uppercase mb-2 text-sm">{t.detailsSections.audience}</h4>
+                    <p className="text-gray-300">{businessDetails.targetAudience}</p>
+                  </div>
+
+                  <div>
+                    <h4 className="text-neon-purple font-bold uppercase mb-2 text-sm">{t.detailsSections.requirements}</h4>
+                    <ul className="list-disc list-inside text-gray-300 space-y-1">
+                      {businessDetails.operationalRequirements.map((r, i) => <li key={i}>{r}</li>)}
+                    </ul>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     <div className="bg-green-900/20 p-4 rounded border border-green-900">
+                        <h4 className="text-neon-green font-bold uppercase mb-2 text-sm">{t.detailsSections.pros}</h4>
+                        <ul className="space-y-1">
+                          {businessDetails.pros.map((p, i) => <li key={i} className="text-sm text-gray-300 flex items-start"><span className="text-neon-green mr-2">+</span>{p}</li>)}
+                        </ul>
+                     </div>
+                     <div className="bg-red-900/20 p-4 rounded border border-red-900">
+                        <h4 className="text-red-400 font-bold uppercase mb-2 text-sm">{t.detailsSections.cons}</h4>
+                         <ul className="space-y-1">
+                          {businessDetails.cons.map((c, i) => <li key={i} className="text-sm text-gray-300 flex items-start"><span className="text-red-400 mr-2">-</span>{c}</li>)}
+                        </ul>
+                     </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-neon-pink font-bold uppercase mb-2 text-sm">{t.detailsSections.marketing}</h4>
+                    <p className="text-gray-300 italic border-l-2 border-neon-pink pl-4">{businessDetails.marketingQuickTip}</p>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-700 flex justify-end gap-4">
+                     <button onClick={closeDetails} className="text-gray-400 hover:text-white uppercase text-sm font-bold tracking-wider px-4">
+                       {t.closeBtn}
+                     </button>
+                     <NeonButton color="pink" onClick={() => detailIdea && handleIdeaSelect(detailIdea)}>
+                       {t.analyzeBtn}
+                     </NeonButton>
+                  </div>
+               </div>
+            ) : (
+              <div className="text-red-500">{t.errors.detailsFail}</div>
+            )}
+          </NeonModal>
+        </main>
       </div>
     </div>
   );

@@ -105,13 +105,15 @@ export const generatePersonalizedIdeas = async (profile: UserProfile, language: 
       - Budget: ${profile.budget}
       - Skills: ${profile.skills}
       - Interests: ${profile.interests}
+      - Education: ${profile.education || 'Not specified'}
+      - Experience: ${profile.experience || 'Not specified'}
       - Risk Tolerance: ${profile.riskTolerance}
       - Time Commitment: ${profile.timeCommitment}
 
       Constraints:
       1. Ideas must involve buying a specific machine or system to start the business.
       2. The machine cost must fit within or near the user's budget.
-      3. The business should align with their skills and interests.
+      3. The business should align with their skills, interests, and professional background.
       
       ${langInstruction}
       Output 6 distinct ideas.
