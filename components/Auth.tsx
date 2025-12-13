@@ -1,68 +1,78 @@
 import React, { useState } from 'react';
-import { NeonCard, NeonButton, NeonInput, NeonText } from './NeonUI';
-import { User } from '../types';
+import { NeonCard, NeonButton, NeonInput } from './NeonUI';
+import { supabase } from '../services/supabaseClient';
 
 interface AuthProps {
-  onLogin: (user: User) => void;
   t: any;
   error?: string | null;
+  onGuestLogin: () => void;
 }
 
-export const Auth: React.FC<AuthProps> = ({ onLogin, t, error }) => {
+export const Auth: React.FC<AuthProps> = ({ t, error: propError, onGuestLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
+    setLocalError(null);
 
-    // Mock Authentication Logic
-    setTimeout(() => {
-      setIsProcessing(false);
-      if (email === 'admin' && password === 'admin') {
-        onLogin({
-          id: 'admin-1',
-          name: 'System Admin',
-          email: 'admin@neon.com',
-          role: 'admin',
-          savedIdeas: []
+    try {
+      if (isSignUp) {
+        // Sign Up Logic
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              name: email.split('@')[0], // Default name
+            }
+          }
         });
-      } else if (email === 'user' && password === 'user') {
-        onLogin({
-          id: 'user-1',
-          name: 'Operative One',
-          email: 'user@neon.com',
-          role: 'user',
-          savedIdeas: []
-        });
-      } else if (email && password) {
-         // Generic Login for other inputs
-        onLogin({
-          id: `user-${Date.now()}`,
-          name: email.split('@')[0],
-          email: email,
-          role: 'user',
-          savedIdeas: []
-        });
+        if (error) throw error;
+        alert("Registration successful! Please check your email or log in.");
+        setIsSignUp(false);
       } else {
-        // Simple error handling done in parent or ignored for mock
+        // Log In Logic
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+        if (error) throw error;
       }
-    }, 1000);
+    } catch (err: any) {
+      console.error(err);
+      if (err.message.includes("provider is not enabled")) {
+        setLocalError("Email login is not enabled in Supabase Dashboard. Try Guest Mode.");
+      } else {
+        setLocalError(err.message);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const socialLogin = (provider: string) => {
+  const socialLogin = async (provider: 'google' | 'facebook') => {
     setIsProcessing(true);
-    setTimeout(() => {
-        setIsProcessing(false);
-        onLogin({
-            id: `${provider}-${Date.now()}`,
-            name: `${provider} User`,
-            email: `user@${provider.toLowerCase()}.com`,
-            role: 'user',
-            savedIdeas: []
-        });
-    }, 1500);
+    setLocalError(null);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: provider,
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      console.error(err);
+      if (err.message.includes("provider is not enabled")) {
+        setLocalError(`${provider.toUpperCase()} login is not configured in Supabase. Enable it in Authentication > Providers.`);
+      } else {
+        setLocalError(err.message);
+      }
+    } finally {
+      setIsProcessing(false);
+    }
   }
 
   return (
@@ -79,16 +89,19 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, t, error }) => {
 
       <NeonCard color="blue" className="w-full max-w-md p-8" hoverEffect={false}>
         <div className="text-center mb-6">
-            <h2 className="text-2xl font-bold text-white uppercase">{t.login.title}</h2>
+            <h2 className="text-2xl font-bold text-white uppercase">
+              {isSignUp ? "Create Identity" : t.login.title}
+            </h2>
         </div>
         
-        <form onSubmit={handleLogin} className="space-y-4">
+        <form onSubmit={handleAuth} className="space-y-4">
           <NeonInput 
             label={t.login.emailLabel} 
-            type="text" 
+            type="email" 
             placeholder={t.placeholders.email}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
           />
           <NeonInput 
             label={t.login.passLabel} 
@@ -96,14 +109,29 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, t, error }) => {
             placeholder={t.placeholders.password}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
           />
           
-          {error && <div className="text-red-500 text-sm text-center">{error}</div>}
+          {(localError || propError) && (
+            <div className="text-red-500 text-sm text-center bg-red-900/20 border border-red-900 p-2 rounded">
+              {localError || propError}
+            </div>
+          )}
 
           <NeonButton type="submit" fullWidth color="blue" disabled={isProcessing}>
-             {isProcessing ? '...' : t.login.loginBtn}
+             {isProcessing ? 'Processing...' : (isSignUp ? "Register Operative" : t.login.loginBtn)}
           </NeonButton>
         </form>
+
+        <div className="mt-4 text-center">
+          <button 
+            type="button"
+            onClick={() => { setIsSignUp(!isSignUp); setLocalError(null); }}
+            className="text-neon-blue text-sm uppercase tracking-wider hover:text-white underline"
+          >
+            {isSignUp ? "Already have an identity? Login" : "Need access? Register"}
+          </button>
+        </div>
 
         <div className="my-6 flex items-center justify-between text-gray-500 text-xs uppercase tracking-widest">
             <span className="w-full border-t border-gray-800"></span>
@@ -113,7 +141,14 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, t, error }) => {
 
         <div className="space-y-3">
             <button 
-                onClick={() => socialLogin('Google')}
+              onClick={onGuestLogin}
+              className="w-full bg-transparent border border-neon-green text-neon-green font-bold py-3 rounded flex items-center justify-center hover:bg-neon-green hover:text-black transition-colors uppercase tracking-widest"
+            >
+               {t.login.guestBtn}
+            </button>
+
+            <button 
+                onClick={() => socialLogin('google')}
                 disabled={isProcessing}
                 className="w-full bg-white text-black font-bold py-3 rounded flex items-center justify-center hover:bg-gray-200 transition-colors"
             >
@@ -121,7 +156,7 @@ export const Auth: React.FC<AuthProps> = ({ onLogin, t, error }) => {
                {t.login.googleBtn}
             </button>
             <button 
-                 onClick={() => socialLogin('Facebook')}
+                 onClick={() => socialLogin('facebook')}
                  disabled={isProcessing}
                  className="w-full bg-[#1877F2] text-white font-bold py-3 rounded flex items-center justify-center hover:bg-[#166fe5] transition-colors"
             >

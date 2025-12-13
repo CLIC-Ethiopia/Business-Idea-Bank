@@ -24,6 +24,7 @@ interface LocaleStrings {
     admin: string;
     about: string;
     logout: string;
+    login: string;
   };
   login: {
     title: string;
@@ -143,7 +144,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       profile: "Profile",
       admin: "Admin Deck",
       about: "About",
-      logout: "Log Out"
+      logout: "Log Out",
+      login: "Login"
     },
     login: {
       title: "ACCESS TERMINAL",
@@ -304,7 +306,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       profile: "መገለጫ",
       admin: "አድሚን",
       about: "ስለ እኛ",
-      logout: "ውጣ"
+      logout: "ውጣ",
+      login: "ግባት"
     },
     login: {
       title: "መግቢያ ተርሚናል",

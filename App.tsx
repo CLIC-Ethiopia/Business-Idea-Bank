@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { INDUSTRIES } from './constants';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, LoadingScan, NeonModal } from './components/NeonUI';
 import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails } from './services/geminiService';
@@ -7,6 +7,7 @@ import { TRANSLATIONS } from './locales';
 import { Auth } from './components/Auth';
 import { UserDashboard, AdminDashboard } from './components/Dashboards';
 import { About } from './components/About';
+import { supabase } from './services/supabaseClient';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -48,13 +49,14 @@ const App: React.FC = () => {
   const [selectedIdea, setSelectedIdea] = useState<BusinessIdea | null>(null);
   const [canvas, setCanvas] = useState<BusinessCanvas | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadingSession, setLoadingSession] = useState(true);
 
-  // Data persistence for saved ideas and custom admin ideas (In Memory)
-  const [savedIdeas, setSavedIdeas] = useState<Record<string, BusinessIdea[]>>({});
+  // Database State
+  const [savedIdeas, setSavedIdeas] = useState<BusinessIdea[]>([]);
   const [customIdeas, setCustomIdeas] = useState<BusinessIdea[]>([]);
   
   // Dashboard Recommendation State
-  const [recommendedIdeas, setRecommendedIdeas] = useState<Record<string, BusinessIdea[]>>({});
+  const [recommendedIdeas, setRecommendedIdeas] = useState<BusinessIdea[]>([]);
   const [isGeneratingRecs, setIsGeneratingRecs] = useState(false);
 
   // Details Modal State
@@ -76,34 +78,183 @@ const App: React.FC = () => {
 
   const t = TRANSLATIONS[language];
 
-  // Auth Handlers
-  const handleLogin = (user: User) => {
-      setCurrentUser(user);
-      if (user.role === 'admin') {
-          setAppState(AppState.DASHBOARD);
-      } else {
-          setAppState(AppState.SELECT_INDUSTRY);
+  // 1. Initialize Session
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setLoadingSession(false);
+      if (session) {
+        handleUserSession(session.user);
       }
-      setError(null);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        handleUserSession(session.user);
+      } else {
+        // Only reset if we are NOT in guest mode
+        // If we are guest, currentUser.id will be 'guest'
+        setCurrentUser(prev => prev?.id === 'guest' ? prev : null);
+        if (currentUser?.id !== 'guest') {
+             setAppState(AppState.LOGIN);
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleGuestLogin = () => {
+      const guestUser: User = {
+          id: 'guest',
+          email: 'guest@neon.com',
+          name: 'Guest Operative',
+          role: 'user',
+          profile: {
+            name: 'Guest Operative',
+            budget: '$1,000 - $5,000',
+            skills: '',
+            interests: '',
+            education: '',
+            experience: '',
+            riskTolerance: 'Medium',
+            timeCommitment: 'Part-time'
+          }
+      };
+      setCurrentUser(guestUser);
+      setUserProfile(guestUser.profile!);
+      setAppState(AppState.SELECT_INDUSTRY);
   };
 
-  const handleLogout = () => {
+  // 2. Fetch Profile & Saved Ideas when Session Exists
+  const handleUserSession = async (authUser: any) => {
+    // Fetch Profile
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', authUser.id)
+      .single();
+
+    let finalProfile: UserProfile;
+
+    if (profileData) {
+      finalProfile = {
+        name: profileData.name || authUser.email,
+        budget: profileData.budget || '$1,000 - $5,000',
+        skills: profileData.skills || '',
+        interests: profileData.interests || '',
+        education: profileData.education || '',
+        experience: profileData.experience || '',
+        riskTolerance: (profileData.risk_tolerance as any) || 'Medium',
+        timeCommitment: (profileData.time_commitment as any) || 'Part-time',
+      };
+    } else {
+      // Create default if missing (Trigger handles this usually, but fallback here)
+      finalProfile = {
+         name: authUser.user_metadata.name || authUser.email,
+         budget: '$1,000 - $5,000',
+         skills: '',
+         interests: '',
+         education: '',
+         experience: '',
+         riskTolerance: 'Medium',
+         timeCommitment: 'Part-time'
+      };
+    }
+
+    setCurrentUser({
+      id: authUser.id,
+      email: authUser.email,
+      name: finalProfile.name,
+      role: 'user', // Basic role for now
+      profile: finalProfile
+    });
+    
+    // Update local profile state
+    setUserProfile(finalProfile);
+
+    // Fetch Saved Ideas
+    fetchSavedIdeas(authUser.id);
+
+    // Move to selection screen if we were in login
+    setAppState((prev) => prev === AppState.LOGIN ? AppState.SELECT_INDUSTRY : prev);
+  };
+
+  const fetchSavedIdeas = async (userId: string) => {
+    if (userId === 'guest') {
+        // Guest doesn't fetch from DB
+        return;
+    }
+
+    const { data, error } = await supabase
+      .from('ideas')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_saved', true)
+      .order('created_at', { ascending: false });
+
+    if (data) {
+       // Map DB keys to frontend keys
+       const mappedIdeas: BusinessIdea[] = data.map(item => ({
+          id: item.id,
+          machineName: item.machine_name,
+          businessTitle: item.business_title,
+          description: item.description,
+          priceRange: item.price_range,
+          platformSource: item.platform_source as any,
+          potentialRevenue: item.potential_revenue,
+          industryId: item.industry_id
+       }));
+       setSavedIdeas(mappedIdeas);
+    }
+  };
+
+  const handleLogout = async () => {
+      if (currentUser?.id !== 'guest') {
+          await supabase.auth.signOut();
+      }
       setCurrentUser(null);
       setAppState(AppState.LOGIN);
       reset();
   };
 
-  const handleSaveIdea = (idea: BusinessIdea) => {
+  const handleSaveIdea = async (idea: BusinessIdea) => {
       if (!currentUser) return;
-      setSavedIdeas(prev => {
-          const userIdeas = prev[currentUser.id] || [];
-          // Avoid duplicates
-          if (userIdeas.find(i => i.id === idea.id)) return prev;
-          return {
-              ...prev,
-              [currentUser.id]: [...userIdeas, idea]
-          };
-      });
+      
+      // Check if already saved in local state to avoid DB spam
+      if (savedIdeas.find(i => i.businessTitle === idea.businessTitle)) return;
+
+      if (currentUser.id === 'guest') {
+          // Guest mode: Save to local state only
+          setSavedIdeas(prev => [idea, ...prev]);
+          alert("Idea saved locally (Guest Mode)");
+          return;
+      }
+
+      const { data, error } = await supabase
+        .from('ideas')
+        .insert({
+           user_id: currentUser.id,
+           machine_name: idea.machineName,
+           business_title: idea.businessTitle,
+           description: idea.description,
+           price_range: idea.priceRange,
+           platform_source: idea.platformSource,
+           potential_revenue: idea.potentialRevenue,
+           industry_id: selectedIndustry?.id || 'custom',
+           is_saved: true
+        })
+        .select()
+        .single();
+
+      if (data) {
+         setSavedIdeas(prev => [idea, ...prev]);
+         // Also update ideas list to mark potential matches if needed
+      } else if (error) {
+         console.error("Error saving idea:", error);
+         alert("Could not save to database.");
+      }
   };
 
   const handleAdminAddIdea = (idea: BusinessIdea) => {
@@ -113,19 +264,26 @@ const App: React.FC = () => {
   const handleGenerateRecommendations = async (profile: UserProfile) => {
       if (!currentUser) return;
       
-      // Update local profile state as well in case they go to wizard later
       setUserProfile(profile);
-      
-      // Update user object locally (optional, for session persistence in a real app)
       setCurrentUser({ ...currentUser, profile });
+
+      if (currentUser.id !== 'guest') {
+        // Save profile updates to DB
+        await supabase.from('profiles').update({
+            education: profile.education,
+            experience: profile.experience,
+            skills: profile.skills,
+            interests: profile.interests,
+            budget: profile.budget,
+            time_commitment: profile.timeCommitment,
+            risk_tolerance: profile.riskTolerance
+        }).eq('id', currentUser.id);
+      }
 
       setIsGeneratingRecs(true);
       try {
         const recs = await generatePersonalizedIdeas(profile, language);
-        setRecommendedIdeas(prev => ({
-            ...prev,
-            [currentUser.id]: recs
-        }));
+        setRecommendedIdeas(recs);
       } catch (e) {
           console.error(e);
       } finally {
@@ -146,9 +304,7 @@ const App: React.FC = () => {
       const industryName = t.industries[industry.id] || industry.name;
       const generatedIdeas = await generateIdeas(industryName, language);
       
-      // Inject Admin Custom Ideas if they match the selected industry (Simple simulation)
       const relevantCustomIdeas = customIdeas.filter(i => i.industryId === industry.id);
-      
       const allIdeas = [...relevantCustomIdeas, ...generatedIdeas];
 
       if (allIdeas.length === 0) {
@@ -168,6 +324,21 @@ const App: React.FC = () => {
     e.preventDefault();
     setAppState(AppState.LOADING_PROFILE_IDEAS);
     setError(null);
+    
+    // Save profile to DB on wizard submit
+    if (currentUser && currentUser.id !== 'guest') {
+       await supabase.from('profiles').update({
+        name: userProfile.name,
+        education: userProfile.education,
+        experience: userProfile.experience,
+        skills: userProfile.skills,
+        interests: userProfile.interests,
+        budget: userProfile.budget,
+        time_commitment: userProfile.timeCommitment,
+        risk_tolerance: userProfile.riskTolerance
+      }).eq('id', currentUser.id);
+    }
+
     try {
       const generatedIdeas = await generatePersonalizedIdeas(userProfile, language);
       if (generatedIdeas.length === 0) {
@@ -175,7 +346,6 @@ const App: React.FC = () => {
         setAppState(AppState.USER_PROFILE);
       } else {
         setIdeas(generatedIdeas);
-        // We set selectedIndustry to null or a special value to indicate profile mode
         setSelectedIndustry({ id: 'custom', name: t.industries['custom'], icon: '🎯' });
         setAppState(AppState.SELECT_IDEA);
       }
@@ -211,7 +381,6 @@ const App: React.FC = () => {
   };
 
   const handleIdeaSelect = async (idea: BusinessIdea) => {
-    // Close details modal if open
     if (detailIdea) closeDetails();
     
     setSelectedIdea(idea);
@@ -249,30 +418,36 @@ const App: React.FC = () => {
   // Render Functions
 
   const renderNavBar = () => {
-      if (!currentUser) return null;
+      // Logic modified to show NavBar container even when logged out
       return (
           <div className="flex justify-between items-center p-4 bg-black border-b border-gray-900 sticky top-0 z-20 backdrop-blur-md bg-opacity-80">
               <div className="flex items-center gap-4">
-                  <span className="font-orbitron font-bold text-xl tracking-tighter cursor-pointer" onClick={() => setAppState(AppState.SELECT_INDUSTRY)}>
+                  <span className="font-orbitron font-bold text-xl tracking-tighter cursor-pointer" onClick={() => currentUser ? setAppState(AppState.SELECT_INDUSTRY) : setAppState(AppState.LOGIN)}>
                       <span className="text-white">NEON</span>
                       <span className="text-neon-blue">ID</span>
                   </span>
                   
                   {/* Nav Links */}
                   <div className="hidden md:flex items-center gap-6 ml-8">
-                    <button 
-                      onClick={() => setAppState(AppState.SELECT_INDUSTRY)}
-                      className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.SELECT_INDUSTRY ? 'text-neon-blue' : 'text-gray-500'}`}
-                    >
-                        <HomeIcon /> {t.nav.home}
-                    </button>
-                    <button 
-                      onClick={() => setAppState(AppState.DASHBOARD)}
-                      className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
-                    >
-                        <UserIcon /> {currentUser.role === 'admin' ? t.nav.admin : t.nav.profile}
-                    </button>
-                    <button 
+                     {/* Show Home/Profile only if logged in */}
+                     {currentUser && (
+                        <>
+                        <button 
+                            onClick={() => setAppState(AppState.SELECT_INDUSTRY)}
+                            className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.SELECT_INDUSTRY ? 'text-neon-blue' : 'text-gray-500'}`}
+                        >
+                            <HomeIcon /> {t.nav.home}
+                        </button>
+                        <button 
+                            onClick={() => setAppState(AppState.DASHBOARD)}
+                            className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
+                        >
+                            <UserIcon /> {currentUser.role === 'admin' ? t.nav.admin : t.nav.profile}
+                        </button>
+                        </>
+                     )}
+                     {/* Always show About */}
+                     <button 
                       onClick={() => setAppState(AppState.ABOUT)}
                       className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.ABOUT ? 'text-neon-blue' : 'text-gray-500'}`}
                     >
@@ -284,9 +459,23 @@ const App: React.FC = () => {
                   <button onClick={toggleLanguage} className="text-gray-400 hover:text-white flex items-center gap-1">
                       <GlobeIcon /> <span className="text-xs uppercase">{language}</span>
                   </button>
-                  <button onClick={handleLogout} className="text-red-500 hover:text-red-400 text-xs uppercase font-bold tracking-widest border border-red-900 px-3 py-1 rounded">
-                      {t.nav.logout}
-                  </button>
+                  {currentUser ? (
+                     // User is logged in (Guest or Real)
+                     currentUser.id === 'guest' ? (
+                        <button onClick={handleLogout} className="text-neon-blue hover:text-white text-xs uppercase font-bold tracking-widest border border-neon-blue px-3 py-1 rounded shadow-[0_0_10px_#00d4ff33] hover:shadow-[0_0_15px_#00d4ff66] transition-all">
+                             {t.nav.login}
+                        </button>
+                     ) : (
+                        <button onClick={handleLogout} className="text-red-500 hover:text-red-400 text-xs uppercase font-bold tracking-widest border border-red-900 px-3 py-1 rounded">
+                            {t.nav.logout}
+                        </button>
+                     )
+                  ) : (
+                     // User is logged out
+                     <button onClick={() => setAppState(AppState.LOGIN)} className="text-neon-blue hover:text-white text-xs uppercase font-bold tracking-widest border border-neon-blue px-3 py-1 rounded shadow-[0_0_10px_#00d4ff33] hover:shadow-[0_0_15px_#00d4ff66] transition-all">
+                         {t.nav.login}
+                     </button>
+                  )}
               </div>
           </div>
       )
@@ -436,7 +625,7 @@ const App: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {ideas.map((idea, idx) => {
-          const isSaved = currentUser && savedIdeas[currentUser.id]?.find(i => i.id === idea.id);
+          const isSaved = savedIdeas.some(i => i.businessTitle === idea.businessTitle || i.id === idea.id);
           return (
             <NeonCard key={idx} color="pink" className="flex flex-col h-full" hoverEffect={false}>
               <div className="relative h-48 mb-4 rounded-lg overflow-hidden border border-gray-800">
@@ -497,7 +686,6 @@ const App: React.FC = () => {
   const renderBusinessCanvas = () => {
     if (!canvas || !selectedIdea) return null;
 
-    // Helper to render a canvas block
     const CanvasBlock = ({ title, items, color = 'blue', className = '' }: { title: string, items: string[], color?: 'blue'|'pink'|'green'|'purple', className?: string }) => (
       <div className={`bg-dark-card border border-gray-800 p-4 h-full flex flex-col hover:border-neon-${color} transition-colors duration-300 ${className}`}>
         <h4 className={`text-neon-${color} font-bold uppercase tracking-widest text-sm mb-4 border-b border-gray-800 pb-2`}>
@@ -530,44 +718,45 @@ const App: React.FC = () => {
 
         {/* Canvas Grid */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-grow min-h-0 overflow-y-auto pb-8">
-          
           {/* Left Col */}
           <div className="grid grid-rows-2 gap-4 md:col-span-1">
              <CanvasBlock title={t.canvasSections.keyPartners} items={canvas.keyPartners} color="purple" />
              <CanvasBlock title={t.canvasSections.costStructure} items={canvas.costStructure} color="pink" />
           </div>
-
           {/* Left-Mid Col */}
           <div className="grid grid-rows-2 gap-4 md:col-span-1">
              <CanvasBlock title={t.canvasSections.keyActivities} items={canvas.keyActivities} color="blue" />
              <CanvasBlock title={t.canvasSections.keyResources} items={canvas.keyResources} color="blue" />
           </div>
-
           {/* Center Col */}
           <div className="md:col-span-1">
              <CanvasBlock title={t.canvasSections.valuePropositions} items={canvas.valuePropositions} color="green" className="h-full border-neon-green shadow-neon-green border-opacity-30" />
           </div>
-
           {/* Right-Mid Col */}
           <div className="grid grid-rows-2 gap-4 md:col-span-1">
              <CanvasBlock title={t.canvasSections.customerRelationships} items={canvas.customerRelationships} color="blue" />
              <CanvasBlock title={t.canvasSections.channels} items={canvas.channels} color="blue" />
           </div>
-
            {/* Right Col */}
            <div className="grid grid-rows-2 gap-4 md:col-span-1">
              <CanvasBlock title={t.canvasSections.customerSegments} items={canvas.customerSegments} color="purple" />
              <CanvasBlock title={t.canvasSections.revenueStreams} items={canvas.revenueStreams} color="pink" />
           </div>
-
         </div>
       </div>
     );
   };
 
+  if (loadingSession) {
+    return (
+       <div className="min-h-screen bg-dark-bg flex items-center justify-center">
+          <LoadingScan text="Initializing Connection..." />
+       </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-dark-bg text-gray-200 selection:bg-neon-pink selection:text-white relative overflow-x-hidden">
-      
       {/* Background Ambience */}
       <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-neon-blue rounded-full opacity-5 blur-[120px]"></div>
@@ -580,11 +769,11 @@ const App: React.FC = () => {
 
         <main className="flex-grow">
           {appState === AppState.LOGIN && (
-              <Auth onLogin={handleLogin} t={t} />
+              <Auth t={t} onGuestLogin={handleGuestLogin} />
           )}
 
           {appState === AppState.ABOUT && (
-              <About t={t} onBack={() => setAppState(AppState.SELECT_INDUSTRY)} />
+              <About t={t} onBack={() => currentUser ? setAppState(AppState.SELECT_INDUSTRY) : setAppState(AppState.LOGIN)} />
           )}
 
           {appState === AppState.DASHBOARD && currentUser && (
@@ -592,8 +781,8 @@ const App: React.FC = () => {
                   ? <AdminDashboard user={currentUser} onAddIdea={handleAdminAddIdea} t={t} />
                   : <UserDashboard 
                       user={currentUser} 
-                      savedIdeas={savedIdeas[currentUser.id] || []} 
-                      recommendedIdeas={recommendedIdeas[currentUser.id] || []}
+                      savedIdeas={savedIdeas} 
+                      recommendedIdeas={recommendedIdeas}
                       onViewIdea={handleViewDetails} 
                       onGenerateRecommendations={handleGenerateRecommendations}
                       isGeneratingRecs={isGeneratingRecs}
@@ -637,14 +826,12 @@ const App: React.FC = () => {
                     <h4 className="text-neon-blue font-bold uppercase mb-2 text-sm">{t.detailsSections.audience}</h4>
                     <p className="text-gray-300">{businessDetails.targetAudience}</p>
                   </div>
-
                   <div>
                     <h4 className="text-neon-purple font-bold uppercase mb-2 text-sm">{t.detailsSections.requirements}</h4>
                     <ul className="list-disc list-inside text-gray-300 space-y-1">
                       {businessDetails.operationalRequirements.map((r, i) => <li key={i}>{r}</li>)}
                     </ul>
                   </div>
-
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                      <div className="bg-green-900/20 p-4 rounded border border-green-900">
                         <h4 className="text-neon-green font-bold uppercase mb-2 text-sm">{t.detailsSections.pros}</h4>
@@ -659,12 +846,10 @@ const App: React.FC = () => {
                         </ul>
                      </div>
                   </div>
-
                   <div>
                     <h4 className="text-neon-pink font-bold uppercase mb-2 text-sm">{t.detailsSections.marketing}</h4>
                     <p className="text-gray-300 italic border-l-2 border-neon-pink pl-4">{businessDetails.marketingQuickTip}</p>
                   </div>
-
                   <div className="pt-4 border-t border-gray-700 flex justify-end gap-4">
                      <button onClick={closeDetails} className="text-gray-400 hover:text-white uppercase text-sm font-bold tracking-wider px-4">
                        {t.closeBtn}
