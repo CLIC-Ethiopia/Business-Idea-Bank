@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NeonCard, NeonButton } from './NeonUI';
 import { streamChat } from '../services/geminiService';
-import { AppState, BusinessIdea, Industry } from '../types';
+import { AppState, BusinessIdea, Industry, Language } from '../types';
 
 interface ChatWidgetProps {
   appState: AppState;
@@ -9,6 +9,7 @@ interface ChatWidgetProps {
   selectedIdea: BusinessIdea | null;
   currentUser: any;
   t: any;
+  language: Language;
 }
 
 interface Message {
@@ -16,7 +17,7 @@ interface Message {
   text: string;
 }
 
-export const ChatWidget: React.FC<ChatWidgetProps> = ({ appState, selectedIndustry, selectedIdea, currentUser, t }) => {
+export const ChatWidget: React.FC<ChatWidgetProps> = ({ appState, selectedIndustry, selectedIdea, currentUser, t, language }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
     { role: 'model', text: t.chat.greeting }
@@ -47,14 +48,14 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ appState, selectedIndust
   const getSuggestions = () => {
     if (appState === AppState.VIEW_CANVAS && selectedIdea) {
       return [
-        `What are the biggest risks for ${selectedIdea.businessTitle}?`,
-        `How do I market ${selectedIdea.machineName}?`
+        t.chat.suggestions.risks(selectedIdea.businessTitle),
+        t.chat.suggestions.market(selectedIdea.machineName)
       ];
     }
     if (appState === AppState.SELECT_INDUSTRY) {
       return [
-        "Which industry has the lowest startup cost?",
-        "What is the most profitable sector right now?"
+        t.chat.suggestions.startup,
+        t.chat.suggestions.profitable
       ];
     }
     return [];
@@ -84,7 +85,7 @@ export const ChatWidget: React.FC<ChatWidgetProps> = ({ appState, selectedIndust
 
     try {
         let fullResponse = "";
-        const stream = streamChat(history, text, context);
+        const stream = streamChat(history, text, context, language);
         
         // Add a placeholder message for the model
         setMessages(prev => [...prev, { role: 'model', text: '' }]);

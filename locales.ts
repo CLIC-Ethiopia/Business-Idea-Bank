@@ -9,6 +9,10 @@ interface LocaleStrings {
   backToHome: string;
   backToIdeas: string;
   generateMoreBtn: string;
+  saveCanvasLocal: string;
+  downloadPdf: string;
+  downloading: string;
+  canvasSavedMsg: string;
   scanComplete: (count: number) => string;
   investment: string;
   potential: string;
@@ -63,6 +67,12 @@ interface LocaleStrings {
     placeholder: string;
     greeting: string;
     error: string;
+    suggestions: {
+        risks: (title: string) => string;
+        market: (name: string) => string;
+        startup: string;
+        profitable: string;
+    }
   };
   about: {
     intro: string;
@@ -142,6 +152,10 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     backToHome: "Back to Home",
     backToIdeas: "Back to Ideas",
     generateMoreBtn: "Generate More Ideas",
+    saveCanvasLocal: "Save Canvas (Local)",
+    downloadPdf: "Download PDF",
+    downloading: "Generating PDF...",
+    canvasSavedMsg: "Canvas saved to local storage successfully.",
     scanComplete: (c) => `Scan Complete: ${c} Opportunities Found`,
     investment: "Investment",
     potential: "Potential",
@@ -195,7 +209,13 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
         header: "PROF. FAD AI",
         placeholder: "Ask Prof. Fad...",
         greeting: "Greetings, Operative! Prof. Fad here. Need a business breakthrough?",
-        error: "System glitch! Re-aligning neural pathways..."
+        error: "System glitch! Re-aligning neural pathways...",
+        suggestions: {
+            risks: (title) => `What are the biggest risks for ${title}?`,
+            market: (name) => `How do I market ${name}?`,
+            startup: "Which industry has the lowest startup cost?",
+            profitable: "What is the most profitable sector right now?"
+        }
     },
     about: {
       intro: "NeonVentures is a futuristic intelligence platform designed to identify tangible, machine-based micro-business opportunities for the modern entrepreneur.",
@@ -316,6 +336,10 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
     backToHome: "ወደ መነሻ ገጽ ይመለሱ",
     backToIdeas: "ወደ ሀሳቦች ይመለሱ",
     generateMoreBtn: "ተጨማሪ ሀሳቦችን አፍልቅ",
+    saveCanvasLocal: "ሸራውን አስቀምጥ (Local)",
+    downloadPdf: "PDF አውርድ",
+    downloading: "PDF በማዘጋጀት ላይ...",
+    canvasSavedMsg: "የንግድ ሞዴል ሸራው በተሳካ ሁኔታ ተቀምጧል።",
     scanComplete: (c) => `ፍተሻ ተጠናቋል: ${c} እድሎች ተገኝተዋል`,
     investment: "መነሻ ካፒታል",
     potential: "ይቻላል ገቢ",
@@ -369,7 +393,13 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
         header: "ፕሮፌሰር ፋድ AI",
         placeholder: "ፕሮፌሰር ፋድን ይጠይቁ...",
         greeting: "ሰላም ኦፕሬቲቭ! ፕሮፌሰር ፋድ ነኝ። የንግድ ግኝት ይፈልጋሉ?",
-        error: "የስርዓት ችግር! የነርቭ መስመሮችን እንደገና በማስተካከል ላይ..."
+        error: "የስርዓት ችግር! የነርቭ መስመሮችን እንደገና በማስተካከል ላይ...",
+        suggestions: {
+            risks: (title) => `ለ ${title} ዋና ዋና አደጋዎች ምንድን ናቸው?`,
+            market: (name) => `${name}ን እንዴት ማስተዋወቅ እችላለሁ?`,
+            startup: "ዝቅተኛ መነሻ ካፒታል የሚጠይቀው ዘርፍ የትኛው ነው?",
+            profitable: "በአሁኑ ሰዓት እጅግ አትራፊ የሆነው ዘርፍ የትኛው ነው?"
+        }
     },
     about: {
       intro: "ኒዮን ቬንቸርስ ለዘመናዊ ኢንተርፕረነሮች ተጨባጭ እና ማሽን ላይ የተመሰረቱ ጥቃቅን የንግድ እድሎችን ለመለየት የተነደፈ የወደፊት ኢንተለጀንስ መድረክ ነው።",

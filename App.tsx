@@ -9,6 +9,10 @@ import { UserDashboard, AdminDashboard } from './components/Dashboards';
 import { About } from './components/About';
 import { supabase } from './services/supabaseClient';
 import { ChatWidget } from './components/ChatWidget';
+// @ts-ignore
+import html2canvas from 'html2canvas';
+// @ts-ignore
+import { jsPDF } from 'jspdf';
 
 // Icons
 const ArrowLeftIcon = () => (
@@ -52,6 +56,7 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
 
   // Database State
   const [savedIdeas, setSavedIdeas] = useState<BusinessIdea[]>([]);
@@ -433,6 +438,57 @@ const App: React.FC = () => {
       setAppState(AppState.SELECT_IDEA);
     }
   };
+  
+  const saveCanvasToLocal = () => {
+    if (!selectedIdea || !canvas) return;
+
+    try {
+        const key = 'neon_saved_canvases';
+        const existingStr = localStorage.getItem(key);
+        let existing = existingStr ? JSON.parse(existingStr) : [];
+        
+        // Remove existing entry for this idea if present to update it
+        existing = existing.filter((item: any) => item.idea.businessTitle !== selectedIdea.businessTitle);
+        
+        existing.push({
+            idea: selectedIdea,
+            canvas: canvas,
+            timestamp: Date.now()
+        });
+        
+        localStorage.setItem(key, JSON.stringify(existing));
+        alert(t.canvasSavedMsg);
+    } catch (e) {
+        console.error("Failed to save to local storage", e);
+    }
+  };
+
+  const downloadCanvasAsPDF = async () => {
+      const input = document.getElementById('canvas-pdf-export');
+      if (!input) return;
+      
+      setIsDownloadingPdf(true);
+      try {
+          const canvas = await html2canvas(input, {
+              scale: 2, // High resolution
+              backgroundColor: '#050505', // Force dark background
+              useCORS: true
+          });
+          
+          const imgData = canvas.toDataURL('image/png');
+          const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape, millimeters, A4
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          
+          pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          pdf.save(`${selectedIdea?.businessTitle.replace(/\s+/g, '_')}_Canvas.pdf`);
+      } catch (err) {
+          console.error("Failed to generate PDF", err);
+          alert("Error generating PDF. Please try again.");
+      } finally {
+          setIsDownloadingPdf(false);
+      }
+  };
 
   const reset = () => {
     setAppState(AppState.SELECT_INDUSTRY);
@@ -763,10 +819,35 @@ const App: React.FC = () => {
       <div className="container mx-auto px-4 py-8 h-screen flex flex-col">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 shrink-0">
-          <button onClick={goBackToIdeas} className="flex items-center text-gray-400 hover:text-white transition-colors mb-4 md:mb-0">
-            <ArrowLeftIcon />
-            <span className="ml-2 uppercase tracking-widest">{t.backToIdeas}</span>
-          </button>
+          <div className="flex items-center gap-4 mb-4 md:mb-0">
+              <button onClick={goBackToIdeas} className="flex items-center text-gray-400 hover:text-white transition-colors">
+                <ArrowLeftIcon />
+                <span className="ml-2 uppercase tracking-widest">{t.backToIdeas}</span>
+              </button>
+              
+              <NeonButton color="purple" onClick={saveCanvasToLocal} className="text-xs py-2 px-3">
+                  {t.saveCanvasLocal}
+              </NeonButton>
+
+              <NeonButton 
+                  color="blue" 
+                  onClick={downloadCanvasAsPDF} 
+                  className="text-xs py-2 px-3 flex items-center gap-2"
+                  disabled={isDownloadingPdf}
+              >
+                  {isDownloadingPdf ? (
+                      <>
+                          <div className="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                          {t.downloading}
+                      </>
+                  ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        {t.downloadPdf}
+                      </>
+                  )}
+              </NeonButton>
+          </div>
           <div className="text-right">
             <h2 className="text-3xl font-bold text-white">{selectedIdea.businessTitle}</h2>
             <p className="text-neon-blue font-mono">{selectedIdea.machineName}</p>
@@ -799,6 +880,62 @@ const App: React.FC = () => {
              <CanvasBlock title={t.canvasSections.customerSegments} items={canvas.customerSegments} color="purple" />
              <CanvasBlock title={t.canvasSections.revenueStreams} items={canvas.revenueStreams} color="pink" />
           </div>
+        </div>
+
+        {/* Hidden Print View for PDF Generation - Optimized for A4 Landscape */}
+        <div 
+            id="canvas-pdf-export" 
+            className="fixed top-0 left-[-9999px] bg-dark-bg p-8 text-white w-[1122px] h-auto min-h-[793px]"
+            style={{ 
+                fontFamily: "'Rajdhani', sans-serif",
+                background: '#050505'
+            }}
+        >
+            {/* Header / Summary */}
+            <div className="mb-6 border-b border-gray-800 pb-4">
+                <div className="flex justify-between items-start mb-4">
+                     <div>
+                        <h1 className="text-4xl font-bold text-white mb-2 font-orbitron">{selectedIdea.businessTitle}</h1>
+                        <h2 className="text-2xl text-neon-blue font-mono">{selectedIdea.machineName}</h2>
+                     </div>
+                     <div className="text-right opacity-50">
+                         <div className="text-sm">GENERATED BY NEON VENTURES</div>
+                         <div className="text-xs font-mono">{new Date().toLocaleDateString()}</div>
+                     </div>
+                </div>
+                <div className="bg-dark-card border border-gray-800 p-4 rounded-lg">
+                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-1">Business Summary</h3>
+                    <p className="text-gray-300">{selectedIdea.description}</p>
+                </div>
+            </div>
+
+            {/* Canvas Grid - Fixed Aspect Ratio for Print */}
+            <div className="grid grid-cols-5 gap-4 h-[600px]">
+                {/* Left Col */}
+                <div className="grid grid-rows-2 gap-4 col-span-1">
+                    <CanvasBlock title={t.canvasSections.keyPartners} items={canvas.keyPartners} color="purple" className="overflow-visible" />
+                    <CanvasBlock title={t.canvasSections.costStructure} items={canvas.costStructure} color="pink" className="overflow-visible" />
+                </div>
+                {/* Left-Mid Col */}
+                <div className="grid grid-rows-2 gap-4 col-span-1">
+                    <CanvasBlock title={t.canvasSections.keyActivities} items={canvas.keyActivities} color="blue" className="overflow-visible" />
+                    <CanvasBlock title={t.canvasSections.keyResources} items={canvas.keyResources} color="blue" className="overflow-visible" />
+                </div>
+                {/* Center Col */}
+                <div className="col-span-1">
+                    <CanvasBlock title={t.canvasSections.valuePropositions} items={canvas.valuePropositions} color="green" className="h-full border-neon-green overflow-visible" />
+                </div>
+                {/* Right-Mid Col */}
+                <div className="grid grid-rows-2 gap-4 col-span-1">
+                    <CanvasBlock title={t.canvasSections.customerRelationships} items={canvas.customerRelationships} color="blue" className="overflow-visible" />
+                    <CanvasBlock title={t.canvasSections.channels} items={canvas.channels} color="blue" className="overflow-visible" />
+                </div>
+                {/* Right Col */}
+                <div className="grid grid-rows-2 gap-4 col-span-1">
+                    <CanvasBlock title={t.canvasSections.customerSegments} items={canvas.customerSegments} color="purple" className="overflow-visible" />
+                    <CanvasBlock title={t.canvasSections.revenueStreams} items={canvas.revenueStreams} color="pink" className="overflow-visible" />
+                </div>
+            </div>
         </div>
       </div>
     );
@@ -930,6 +1067,7 @@ const App: React.FC = () => {
                 selectedIdea={selectedIdea} 
                 currentUser={currentUser}
                 t={t}
+                language={language}
             />
         )}
       </div>

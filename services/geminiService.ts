@@ -220,8 +220,11 @@ export const generateCanvas = async (idea: BusinessIdea, language: Language): Pr
 export const streamChat = async function* (
     history: { role: 'user' | 'model', parts: [{ text: string }] }[],
     newMessage: string,
-    context: string
+    context: string,
+    language: Language
 ) {
+    const langInstruction = language === 'am' ? "IMPORTANT: Reply in Amharic language." : "Reply in English.";
+
     const chat = ai.chats.create({
         model: 'gemini-2.5-flash-lite', // Low latency model
         history: history,
@@ -238,6 +241,8 @@ export const streamChat = async function* (
             Context:
             ${context}
             
+            ${langInstruction}
+
             If the user asks about the app, guide them to:
             1. Select an industry to scan.
             2. Or build a profile for personalized matches.
