@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { INDUSTRIES } from './constants';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, LoadingScan, NeonModal } from './components/NeonUI';
 import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails } from './services/geminiService';
-import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User } from './types';
+import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User, CommunityPost } from './types';
 import { TRANSLATIONS } from './locales';
 import { Auth } from './components/Auth';
 import { UserDashboard, AdminDashboard } from './components/Dashboards';
+import { Community } from './components/Community';
 import { About } from './components/About';
 import { supabase } from './services/supabaseClient';
 import { ChatWidget } from './components/ChatWidget';
@@ -51,6 +52,12 @@ const AdminIcon = () => (
   </svg>
 );
 
+const CommunityIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+  </svg>
+);
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [appState, setAppState] = useState<AppState>(AppState.LOGIN);
@@ -68,6 +75,40 @@ const App: React.FC = () => {
   const [savedIdeas, setSavedIdeas] = useState<BusinessIdea[]>([]);
   const [customIdeas, setCustomIdeas] = useState<BusinessIdea[]>([]);
   
+  // Community Posts State (Mocked for immediate functionality)
+  const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>([
+      {
+          id: '1',
+          userId: 'user_1',
+          userName: 'CyberPunk_77',
+          content: 'Has anyone found success sourcing the PET Plastic Recycling line from Alibaba? Shipping costs to West Africa seem high.',
+          industryId: 'waste',
+          likes: 12,
+          comments: 3,
+          timestamp: Date.now() - 3600000 // 1 hour ago
+      },
+      {
+          id: '2',
+          userId: 'user_2',
+          userName: 'NeoFarmer',
+          content: 'Looking for a partner to invest in a Hydroponic Vertical Farm unit. I have the space, need capital for the machine.',
+          industryId: 'agri',
+          likes: 8,
+          comments: 1,
+          timestamp: Date.now() - 7200000 // 2 hours ago
+      },
+       {
+          id: '3',
+          userId: 'user_3',
+          userName: 'TechnoMage',
+          content: 'The small scale CNC machine for jewelry making is a gold mine. ROI in 3 months.',
+          industryId: 'heavy_mfg',
+          likes: 24,
+          comments: 6,
+          timestamp: Date.now() - 86400000 // 1 day ago
+      }
+  ]);
+
   // Dashboard Recommendation State
   const [recommendedIdeas, setRecommendedIdeas] = useState<BusinessIdea[]>([]);
   const [isGeneratingRecs, setIsGeneratingRecs] = useState(false);
@@ -309,6 +350,37 @@ const App: React.FC = () => {
       } finally {
           setIsGeneratingRecs(false);
       }
+  };
+
+  // Community Post Handling
+  const handleAddPost = (content: string, industryId: string) => {
+      if (!currentUser) return;
+      
+      const newPost: CommunityPost = {
+          id: Date.now().toString(),
+          userId: currentUser.id,
+          userName: currentUser.name,
+          content: content,
+          industryId: industryId,
+          likes: 0,
+          comments: 0,
+          timestamp: Date.now()
+      };
+      
+      setCommunityPosts(prev => [newPost, ...prev]);
+  };
+
+  const handleLikePost = (postId: string) => {
+      setCommunityPosts(prev => prev.map(post => {
+          if (post.id === postId) {
+              return {
+                  ...post,
+                  likes: post.isLiked ? post.likes - 1 : post.likes + 1,
+                  isLiked: !post.isLiked
+              };
+          }
+          return post;
+      }));
   };
 
   // Navigation Logic
@@ -553,6 +625,12 @@ const App: React.FC = () => {
                             className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
                         >
                             <UserIcon /> {t.nav.profile}
+                        </button>
+                        <button 
+                            onClick={() => setAppState(AppState.COMMUNITY)}
+                            className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.COMMUNITY ? 'text-neon-blue' : 'text-gray-500'}`}
+                        >
+                            <CommunityIcon /> {t.nav.community}
                         </button>
                         {currentUser.role === 'admin' && (
                             <button 
@@ -1013,6 +1091,16 @@ const App: React.FC = () => {
                  isGeneratingRecs={isGeneratingRecs}
                  t={t} 
              />
+          )}
+
+          {appState === AppState.COMMUNITY && currentUser && (
+              <Community 
+                 user={currentUser}
+                 posts={communityPosts}
+                 onAddPost={handleAddPost}
+                 onLikePost={handleLikePost}
+                 t={t}
+              />
           )}
 
           {appState === AppState.ADMIN_DASHBOARD && currentUser && currentUser.role === 'admin' && (

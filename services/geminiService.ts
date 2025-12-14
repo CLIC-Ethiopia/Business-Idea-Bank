@@ -237,7 +237,7 @@ export const generateCanvas = async (idea: BusinessIdea, language: Language): Pr
 };
 
 export const streamChat = async function* (
-    history: { role: 'user' | 'model', parts: [{ text: string }] }[],
+    history: { role: 'user' | 'model', parts: { text: string }[] }[],
     newMessage: string,
     context: string,
     language: Language

@@ -27,6 +27,7 @@ interface LocaleStrings {
     home: string;
     profile: string;
     admin: string;
+    community: string;
     about: string;
     logout: string;
     login: string;
@@ -61,6 +62,19 @@ interface LocaleStrings {
     updateProfileHint: string;
     recTag: string;
     systemLogs: string;
+  };
+  community: {
+    title: string;
+    subtitle: string;
+    feed: string;
+    channels: string;
+    createPost: string;
+    postPlaceholder: string;
+    postBtn: string;
+    connectBtn: string;
+    generalChannel: string;
+    filterBy: string;
+    noPosts: string;
   };
   chat: {
     header: string;
@@ -173,6 +187,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       home: "Scanner",
       profile: "Profile",
       admin: "Admin Deck",
+      community: "Community",
       about: "About",
       logout: "Log Out",
       login: "Login"
@@ -207,6 +222,19 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       updateProfileHint: "Update your profile to receive AI-powered recommendations.",
       recTag: "REC",
       systemLogs: "System Logs"
+    },
+    community: {
+      title: "NEON HIVE",
+      subtitle: "Collaborate with other operatives. Share intel and form alliances.",
+      feed: "Global Feed",
+      channels: "Active Frequencies",
+      createPost: "Transmit Signal",
+      postPlaceholder: "Share your business concept, ask for advice, or look for partners...",
+      postBtn: "Broadcast",
+      connectBtn: "Connect",
+      generalChannel: "General Frequency",
+      filterBy: "Filter Protocol",
+      noPosts: "No signals detected on this frequency."
     },
     chat: {
         header: "PROF. FAD AI",
@@ -360,6 +388,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       home: "ስካነር",
       profile: "መገለጫ",
       admin: "አድሚን",
+      community: "ማህበረሰብ",
       about: "ስለ እኛ",
       logout: "ውጣ",
       login: "ግባት"
@@ -394,6 +423,19 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       updateProfileHint: "በ AI የተጎለበተ ምክሮችን ለማግኘት መገለጫዎን ያዘምኑ።",
       recTag: "ምክር",
       systemLogs: "የስርዓት ምዝግብ ማስታወሻዎች"
+    },
+    community: {
+      title: "NEON HIVE",
+      subtitle: "ከሌሎች ኦፕሬተሮች ጋር ይተባበሩ። መረጃዎችን ያካፍሉ።",
+      feed: "ዓለም አቀፍ ግድግዳ",
+      channels: "ንቁ ድግግሞሾች",
+      createPost: "መልዕክት አስተላልፍ",
+      postPlaceholder: "የንግድ ፅንሰ-ሀሳብዎን ያጋሩ፣ ምክር ይጠይቁ፣ ወይም አጋሮችን ይፈልጉ...",
+      postBtn: "አሰራጭ",
+      connectBtn: "ተገናኝ",
+      generalChannel: "ጠቅላላ ድግግሞሽ",
+      filterBy: "ማጣሪያ",
+      noPosts: "በዚህ ድግግሞሽ ላይ ምንም ምልክት የለም።"
     },
     chat: {
         header: "ፕሮፌሰር ፋድ AI",

@@ -2,7 +2,7 @@ import React, { ReactNode } from 'react';
 
 interface NeonCardProps {
   children: ReactNode;
-  color?: 'blue' | 'pink' | 'green' | 'purple';
+  color?: 'blue' | 'pink' | 'green' | 'purple' | 'yellow';
   className?: string;
   onClick?: () => void;
   hoverEffect?: boolean;
@@ -20,6 +20,7 @@ export const NeonCard: React.FC<NeonCardProps> = ({
     pink: 'border-neon-pink',
     green: 'border-neon-green',
     purple: 'border-neon-purple',
+    yellow: 'border-neon-yellow',
   }[color];
 
   const shadowColor = {
@@ -27,6 +28,7 @@ export const NeonCard: React.FC<NeonCardProps> = ({
     pink: 'hover:shadow-neon-pink',
     green: 'hover:shadow-neon-green',
     purple: 'hover:shadow-[0_0_10px_#bc13fe,0_0_20px_#bc13fe33]',
+    yellow: 'hover:shadow-neon-yellow',
   }[color];
 
   return (
@@ -48,7 +50,7 @@ export const NeonCard: React.FC<NeonCardProps> = ({
 interface NeonButtonProps {
   children: ReactNode;
   onClick?: () => void;
-  color?: 'blue' | 'pink' | 'green';
+  color?: 'blue' | 'pink' | 'green' | 'purple';
   fullWidth?: boolean;
   disabled?: boolean;
   className?: string;
@@ -68,6 +70,7 @@ export const NeonButton: React.FC<NeonButtonProps> = ({
     blue: 'bg-neon-blue text-black shadow-neon-blue hover:bg-white',
     pink: 'bg-neon-pink text-white shadow-neon-pink hover:bg-white hover:text-neon-pink',
     green: 'bg-neon-green text-black shadow-neon-green hover:bg-white',
+    purple: 'bg-neon-purple text-white shadow-[0_0_15px_#bc13fe] hover:bg-white hover:text-neon-purple',
   }[color];
 
   return (

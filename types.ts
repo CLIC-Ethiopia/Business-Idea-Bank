@@ -59,6 +59,18 @@ export interface User {
   profile?: UserProfile;
 }
 
+export interface CommunityPost {
+  id: string;
+  userId: string;
+  userName: string;
+  content: string;
+  industryId: string; // 'general' or specific industry ID
+  likes: number;
+  comments: number;
+  timestamp: number;
+  isLiked?: boolean;
+}
+
 export enum AppState {
   LOGIN,
   DASHBOARD,
@@ -70,7 +82,8 @@ export enum AppState {
   LOADING_CANVAS,
   VIEW_CANVAS,
   ABOUT,
-  ADMIN_DASHBOARD
+  ADMIN_DASHBOARD,
+  COMMUNITY
 }
 
 export type Language = 'en' | 'am';
