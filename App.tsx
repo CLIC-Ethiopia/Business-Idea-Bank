@@ -48,7 +48,7 @@ const InfoIcon = () => (
 
 const AdminIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
   </svg>
 );
 
@@ -139,6 +139,7 @@ const App: React.FC = () => {
   
   // Roadmap State
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
+  const [roadmapProgress, setRoadmapProgress] = useState<Record<string, boolean>>({});
   const [loadingRoadmap, setLoadingRoadmap] = useState(false);
 
   // Supplier Links State
@@ -546,6 +547,7 @@ const App: React.FC = () => {
     setStressTestResult(null);
     setFinancials(null);
     setRoadmap(null);
+    setRoadmapProgress({}); // Reset progress state when viewing new idea
     setSourcingLinks(null); // Reset sourcing links
     // Reset landed cost default enabled state
     setLandedCost(prev => ({ ...prev, enabled: false }));
@@ -608,20 +610,65 @@ const App: React.FC = () => {
       }
   };
   
+  const getRoadmapStorageKey = (idea: BusinessIdea) => {
+      // Create a stable key for local storage based on business title
+      return `neon_roadmap_${idea.businessTitle.replace(/\s+/g, '_')}`;
+  };
+
   const handleLoadRoadmap = async () => {
       if (!detailIdea) return;
       setActiveDetailTab('roadmap');
       
-      if (roadmap) return; // Already loaded
+      // Check local storage first
+      const storageKey = getRoadmapStorageKey(detailIdea);
+      try {
+          const cached = localStorage.getItem(storageKey);
+          if (cached) {
+              const { roadmap: cachedRoadmap, progress } = JSON.parse(cached);
+              if (cachedRoadmap && Array.isArray(cachedRoadmap)) {
+                  setRoadmap(cachedRoadmap);
+                  setRoadmapProgress(progress || {});
+                  return;
+              }
+          }
+      } catch (e) {
+          console.error("Failed to load cached roadmap", e);
+      }
       
+      if (roadmap) return; // Already loaded in memory
+
       setLoadingRoadmap(true);
       try {
           const result = await generateRoadmap(detailIdea, language);
           setRoadmap(result);
+          setRoadmapProgress({});
+          
+          // Persist the newly generated roadmap immediately
+          if (result) {
+              localStorage.setItem(storageKey, JSON.stringify({
+                  roadmap: result,
+                  progress: {}
+              }));
+          }
       } catch (e) {
           console.error("Roadmap failed", e);
       } finally {
           setLoadingRoadmap(false);
+      }
+  };
+
+  const toggleRoadmapStep = (phaseIdx: number, stepIdx: number) => {
+      const key = `${phaseIdx}-${stepIdx}`;
+      const newProgress = { ...roadmapProgress, [key]: !roadmapProgress[key] };
+      setRoadmapProgress(newProgress);
+
+      // Persist update
+      if (detailIdea && roadmap) {
+          const storageKey = getRoadmapStorageKey(detailIdea);
+          localStorage.setItem(storageKey, JSON.stringify({
+              roadmap: roadmap,
+              progress: newProgress
+          }));
       }
   };
 
@@ -648,6 +695,7 @@ const App: React.FC = () => {
     setStressTestResult(null);
     setFinancials(null);
     setRoadmap(null);
+    setRoadmapProgress({});
     setSourcingLinks(null);
     setLoadingDetails(false);
     setLoadingStressTest(false);
@@ -791,6 +839,20 @@ const App: React.FC = () => {
   };
 
   const metrics = calculateMetrics();
+
+  // Calculate Roadmap Progress Percentage
+  const calculateRoadmapProgress = () => {
+      if (!roadmap) return 0;
+      let totalSteps = 0;
+      let completedSteps = 0;
+      roadmap.forEach((phase, idx) => {
+          phase.steps.forEach((_, sIdx) => {
+              totalSteps++;
+              if (roadmapProgress[`${idx}-${sIdx}`]) completedSteps++;
+          });
+      });
+      return totalSteps === 0 ? 0 : Math.round((completedSteps / totalSteps) * 100);
+  };
 
   // Render Functions
 
@@ -1648,17 +1710,35 @@ const App: React.FC = () => {
                          )
                     ) : (
                         <div className="relative border-l-2 border-gray-800 ml-4 space-y-8 py-2">
+                             <div className="absolute top-[-20px] right-0 text-xs font-bold text-neon-purple uppercase">
+                                Progress: {calculateRoadmapProgress()}%
+                             </div>
                              {roadmap.map((phase, idx) => (
                                  <div key={idx} className="relative pl-8">
                                      <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-neon-purple shadow-[0_0_10px_#bc13fe]"></div>
                                      <h4 className="text-neon-purple font-bold uppercase text-sm mb-1">{t.roadmap.phase} {idx + 1}: {phase.phaseName}</h4>
                                      <div className="text-xs text-gray-500 font-mono mb-2 uppercase tracking-widest">{phase.duration}</div>
                                      <ul className="space-y-2">
-                                         {phase.steps.map((step, sIdx) => (
-                                             <li key={sIdx} className="text-sm text-gray-300 bg-gray-900/50 p-2 rounded border-l-2 border-gray-700">
-                                                 {step}
-                                             </li>
-                                         ))}
+                                         {phase.steps.map((step, sIdx) => {
+                                             const isChecked = !!roadmapProgress[`${idx}-${sIdx}`];
+                                             return (
+                                                 <li 
+                                                    key={sIdx} 
+                                                    className={`
+                                                        text-sm p-2 rounded border-l-2 cursor-pointer flex items-start gap-3 transition-all
+                                                        ${isChecked 
+                                                            ? 'text-gray-500 border-gray-700 bg-gray-900/20' 
+                                                            : 'text-gray-300 border-neon-purple/50 bg-gray-900/50 hover:bg-gray-900'}
+                                                    `}
+                                                    onClick={() => toggleRoadmapStep(idx, sIdx)}
+                                                 >
+                                                     <div className={`mt-0.5 w-4 h-4 flex-shrink-0 border rounded flex items-center justify-center transition-colors ${isChecked ? 'bg-neon-purple border-neon-purple' : 'border-gray-500'}`}>
+                                                        {isChecked && <svg className="w-3 h-3 text-black font-bold" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
+                                                     </div>
+                                                     <span className={isChecked ? 'line-through opacity-50' : ''}>{step}</span>
+                                                 </li>
+                                             );
+                                         })}
                                      </ul>
                                  </div>
                              ))}

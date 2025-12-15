@@ -14,7 +14,7 @@ const businessIdeaSchema: Schema = {
       id: { type: Type.STRING },
       machineName: { type: Type.STRING, description: "Specific name of the machine or system found on Amazon/Alibaba" },
       businessTitle: { type: Type.STRING, description: "Catchy title for the small business" },
-      description: { type: Type.STRING, description: "How the machine is used to make money" },
+      description: { type: Type.STRING, description: "How the machine is used to make money. Must be at least two sentences long." },
       priceRange: { type: Type.STRING, description: "Estimated cost of the machine e.g. $2,000 - $5,000" },
       platformSource: { type: Type.STRING, enum: ['Alibaba', 'Amazon', 'Global Sources'] },
       potentialRevenue: { type: Type.STRING, description: "Brief revenue potential estimation" }
@@ -112,6 +112,8 @@ export const generateIdeas = async (industry: string, language: Language): Promi
       Focus on machines that are accessible to small businesses (under $50,000 investment).
       For each, provide the machine name, a business title, price range, and likely source.
       
+      IMPORTANT: The 'description' field must be detailed and AT LEAST TWO SENTENCES long, explaining exactly how the machine generates revenue.
+      
       ${langInstruction}
     `;
 
@@ -165,6 +167,7 @@ export const generatePersonalizedIdeas = async (profile: UserProfile, language: 
       1. Ideas must involve buying a specific machine or system to start the business.
       2. The machine cost must fit within or near the user's budget.
       3. The business should align with their skills, interests, and professional background.
+      4. The 'description' field must be detailed and AT LEAST TWO SENTENCES long.
       
       ${langInstruction}
       Output 6 distinct ideas.
