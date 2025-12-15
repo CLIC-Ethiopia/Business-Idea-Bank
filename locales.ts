@@ -146,6 +146,10 @@ interface LocaleStrings {
   };
   industries: Record<string, string>;
   canvasSections: Record<string, string>;
+  canvasControls: {
+    bankMode: string;
+    bankModeDesc: string;
+  };
   detailsSections: {
     audience: string;
     requirements: string;
@@ -182,6 +186,14 @@ interface LocaleStrings {
         breakEvenTime: string;
         months: string;
         units: string;
+    };
+    landedCost: {
+        toggle: string;
+        shipping: string;
+        customs: string;
+        vat: string;
+        fees: string;
+        total: string;
     };
     disclaimer: string;
   };
@@ -385,7 +397,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       stressTest: "Running Failure Simulations...",
       financials: "Estimating Financial Data...",
       roadmap: "Constructing Mission Timeline...",
-      sourcing: "Locating Verified Suppliers...",
+      sourcing: "Locating Verified Suppliers..."
     },
     industries: {
       'agri': 'Agriculture & Farming',
@@ -412,6 +424,10 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       customerSegments: "Customer Segments",
       costStructure: "Cost Structure",
       revenueStreams: "Revenue Streams"
+    },
+    canvasControls: {
+      bankMode: "Bank Mode (Print)",
+      bankModeDesc: "Switch to a clean, white corporate layout for official use."
     },
     detailsSections: {
       audience: "Target Audience",
@@ -450,6 +466,14 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
           months: "Months",
           units: "Units"
       },
+      landedCost: {
+          toggle: "Enable Local Context (Import & Tax)",
+          shipping: "Shipping Cost",
+          customs: "Customs Duty (%)",
+          vat: "VAT / Tax (%)",
+          fees: "Clearance / Misc Fees",
+          total: "Total Landed Investment"
+      },
       disclaimer: "Figures are estimates for simulation purposes only."
     },
     roadmap: {
@@ -468,7 +492,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
         tabTitle: "Supplier Outreach",
         intro: "Use this template to professionally contact suppliers. International trade usually requires communication in English.",
         verifiedSources: "Verified Suppliers (AI Detected)",
-        findBtn: (source) => `Manual Search (${source})`,
+        findBtn: (source) => `Find on ${source}`,
         copySubjectBtn: "Copy Subject",
         copyBodyBtn: "Copy Message",
         copied: "Copied!",
@@ -665,7 +689,7 @@ ${user}`
       stressTest: "ሽንፈት ማስመሰሎችን በማስኬድ ላይ...",
       financials: "የፋይናንስ መረጃን በማምጣት ላይ...",
       roadmap: "የተልዕኮ ጊዜን በመገንባት ላይ...",
-      sourcing: "የተረጋገጡ አቅራቢዎችን በመፈለግ ላይ...",
+      sourcing: "የተረጋገጡ አቅራቢዎችን በመፈለግ ላይ..."
     },
     industries: {
       'agri': 'ግብርና እና እርሻ',
@@ -692,6 +716,10 @@ ${user}`
       customerSegments: "የደንበኞች ክፍሎች",
       costStructure: "የወጪ መዋቅር",
       revenueStreams: "የገቢ ምንጮች"
+    },
+    canvasControls: {
+      bankMode: "የባንክ ሞድ (ህትመት)",
+      bankModeDesc: "ወደ ንጹህ፣ ነጭ የኮርፖሬት አቀማመጥ ቀይር።"
     },
     detailsSections: {
       audience: "የታለመ ደንበኛ",
@@ -729,6 +757,14 @@ ${user}`
           breakEvenTime: "ወጪ ለመመለስ የሚፈጀው ጊዜ",
           months: "ወራት",
           units: "ብዛት"
+      },
+      landedCost: {
+          toggle: "አካባቢያዊ ሁኔታን አንቃ (ግብር እና ታክስ)",
+          shipping: "የትራንስፖርት ወጪ",
+          customs: "የጉምሩክ ቀረጥ (%)",
+          vat: "ተጨማሪ እሴት ታክስ (%)",
+          fees: "ሌሎች ክፍያዎች",
+          total: "ጠቅላላ ወጪ"
       },
       disclaimer: "አሃዞች ለማስመሰል ዓላማዎች የተሰጡ ግምቶች ናቸው።"
     },

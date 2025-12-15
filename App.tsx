@@ -48,7 +48,7 @@ const InfoIcon = () => (
 
 const AdminIcon = () => (
   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
   </svg>
 );
 
@@ -67,6 +67,7 @@ const App: React.FC = () => {
   const [sortMethod, setSortMethod] = useState<'newest' | 'upvotes'>('newest');
   const [selectedIdea, setSelectedIdea] = useState<BusinessIdea | null>(null);
   const [canvas, setCanvas] = useState<BusinessCanvas | null>(null);
+  const [canvasTheme, setCanvasTheme] = useState<'neon' | 'corporate'>('neon');
   const [error, setError] = useState<string | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -127,6 +128,14 @@ const App: React.FC = () => {
   // Financial Calculator State
   const [financials, setFinancials] = useState<FinancialEstimates | null>(null);
   const [loadingFinancials, setLoadingFinancials] = useState(false);
+  // Landed Cost State
+  const [landedCost, setLandedCost] = useState({
+      shipping: 500,
+      customs: 15,
+      vat: 15,
+      fees: 200,
+      enabled: false
+  });
   
   // Roadmap State
   const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
@@ -538,6 +547,8 @@ const App: React.FC = () => {
     setFinancials(null);
     setRoadmap(null);
     setSourcingLinks(null); // Reset sourcing links
+    // Reset landed cost default enabled state
+    setLandedCost(prev => ({ ...prev, enabled: false }));
     setActiveDetailTab('blueprint');
     setLoadingDetails(true);
     
@@ -651,6 +662,7 @@ const App: React.FC = () => {
     setSelectedIdea(idea);
     setAppState(AppState.LOADING_CANVAS);
     setError(null);
+    setCanvasTheme('neon'); // Reset theme
     try {
       const generatedCanvas = await generateCanvas(idea, language);
       if (!generatedCanvas) {
@@ -698,7 +710,7 @@ const App: React.FC = () => {
       try {
           const canvas = await html2canvas(input, {
               scale: 2, // High resolution
-              backgroundColor: '#050505', // Force dark background
+              backgroundColor: canvasTheme === 'corporate' ? '#ffffff' : '#050505', // Context-aware background
               useCORS: true
           });
           
@@ -755,16 +767,27 @@ const App: React.FC = () => {
     setSelectedIdea(null);
   };
 
-  // Calculations for ROI
+  // Calculations for ROI & Landed Cost
   const calculateMetrics = () => {
       if (!financials) return null;
+      
+      let initialInvestment = financials.initialInvestment;
+
+      // Apply landed cost adjustment if enabled
+      if (landedCost.enabled) {
+          const basePrice = financials.initialInvestment;
+          const duty = basePrice * (landedCost.customs / 100);
+          const taxableAmount = basePrice + duty + landedCost.shipping; // Simplified base for VAT
+          const vat = taxableAmount * (landedCost.vat / 100);
+          initialInvestment = basePrice + landedCost.shipping + duty + vat + landedCost.fees;
+      }
       
       const margin = financials.pricePerUnit - financials.costPerUnit;
       const monthlyProfit = (margin * financials.estimatedMonthlySales) - financials.monthlyFixedCosts;
       const breakEvenUnits = margin > 0 ? Math.ceil(financials.monthlyFixedCosts / margin) : Infinity;
-      const breakEvenMonths = monthlyProfit > 0 ? Math.ceil(financials.initialInvestment / monthlyProfit) : Infinity;
+      const breakEvenMonths = monthlyProfit > 0 ? Math.ceil(initialInvestment / monthlyProfit) : Infinity;
 
-      return { margin, monthlyProfit, breakEvenUnits, breakEvenMonths };
+      return { margin, monthlyProfit, breakEvenUnits, breakEvenMonths, adjustedInvestment: initialInvestment };
   };
 
   const metrics = calculateMetrics();
@@ -1065,7 +1088,7 @@ const App: React.FC = () => {
                 </div>
               </div>
 
-              <h3 className="text-2xl font-bold text-white mb-2 leading-tight">{idea.businessTitle}</h3>
+              <h3 className="text-2xl font-bold text-white mb-2 leading-tight">{idea.businessTitle} business</h3>
               <div className="text-neon-blue text-sm font-bold mb-4 uppercase tracking-wider">
                 {idea.machineName}
               </div>
@@ -1134,6 +1157,25 @@ const App: React.FC = () => {
   const renderCanvasView = () => {
     if (!canvas || !selectedIdea) return null;
 
+    const isCorporate = canvasTheme === 'corporate';
+
+    // Helper classes based on theme
+    const containerClass = isCorporate 
+        ? "bg-white border-2 border-black rounded-none shadow-none text-black p-8" 
+        : "bg-dark-card border border-neon-blue rounded-xl p-4 shadow-[0_0_30px_rgba(0,212,255,0.1)] text-white";
+        
+    const boxClass = (baseColor: string) => isCorporate
+        ? "border border-gray-300 bg-gray-50 rounded-none p-4"
+        : `border border-gray-700 bg-black/40 rounded-lg p-4`;
+
+    const titleClass = (color: string) => isCorporate
+        ? "text-black font-bold uppercase mb-4 text-sm tracking-wider font-sans border-b border-gray-300 pb-2"
+        : `text-${color} font-bold uppercase mb-4 text-sm tracking-wider`;
+
+    const listClass = isCorporate
+        ? "list-disc list-inside text-black text-sm space-y-2 font-sans"
+        : "list-disc list-inside text-gray-300 text-sm space-y-2";
+
     return (
     <div className="container mx-auto px-4 py-8 max-w-7xl animate-[fadeIn_0.5s_ease-out]">
       <div className="flex flex-col md:flex-row justify-between items-center mb-6">
@@ -1143,10 +1185,19 @@ const App: React.FC = () => {
             <span className="ml-2 uppercase tracking-widest">{t.backToIdeas}</span>
             </button>
         </div>
-        <div className="text-center my-4 md:my-0">
-          <h2 className="text-2xl font-bold text-white uppercase">{selectedIdea.businessTitle}</h2>
-          <p className="text-neon-blue font-mono">BUSINESS MODEL CANVAS</p>
+        
+        {/* Toggle Switch */}
+        <div className="flex items-center gap-3 bg-gray-900 rounded-full px-4 py-2 border border-gray-700">
+            <span className={`text-xs font-bold ${!isCorporate ? 'text-neon-blue' : 'text-gray-500'}`}>NEON</span>
+            <button 
+                onClick={() => setCanvasTheme(prev => prev === 'neon' ? 'corporate' : 'neon')}
+                className={`w-10 h-5 rounded-full p-1 transition-colors relative ${isCorporate ? 'bg-white' : 'bg-gray-700'}`}
+            >
+                <div className={`w-3 h-3 rounded-full shadow-md transition-transform transform ${isCorporate ? 'translate-x-5 bg-black' : 'translate-x-0 bg-neon-blue'}`}></div>
+            </button>
+            <span className={`text-xs font-bold ${isCorporate ? 'text-white' : 'text-gray-500'}`}>BANK</span>
         </div>
+
         <div className="flex gap-4">
              <NeonButton 
                 color="green" 
@@ -1176,64 +1227,73 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      <div id="canvas-pdf-export" className="bg-dark-card border border-neon-blue rounded-xl p-4 shadow-[0_0_30px_rgba(0,212,255,0.1)]">
+      <div id="canvas-pdf-export" className={containerClass}>
+        {/* Header for Corporate Mode */}
+        {isCorporate && (
+            <div className="text-center mb-8 border-b-2 border-black pb-4">
+                <h1 className="text-3xl font-bold text-black uppercase mb-1 font-sans">{selectedIdea.businessTitle}</h1>
+                <p className="text-gray-600 text-sm uppercase tracking-widest font-sans">Business Model Canvas Strategy</p>
+                <div className="mt-2 text-xs text-gray-500">Generated by NeonVentures AI • {new Date().toLocaleDateString()}</div>
+            </div>
+        )}
+
         {/* Top Row: Key Partners, Activities, Resources, Value Prop, Customer Rel, Channels, Segments */}
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 min-h-[600px]">
           
           {/* Left Block (Partners) */}
-          <div className="lg:col-span-1 border border-gray-700 bg-black/40 p-4 rounded-lg flex flex-col">
-            <h3 className="text-neon-pink font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.keyPartners}</h3>
-            <ul className="list-disc list-inside text-gray-300 text-sm space-y-2 flex-grow">
+          <div className={`lg:col-span-1 flex flex-col ${boxClass('gray-700')}`}>
+            <h3 className={titleClass('neon-pink')}>{t.canvasSections.keyPartners}</h3>
+            <ul className={`${listClass} flex-grow`}>
               {canvas.keyPartners.map((item, i) => <li key={i}>{item}</li>)}
             </ul>
           </div>
 
           {/* Left-Mid Block (Activities & Resources) */}
           <div className="lg:col-span-1 flex flex-col gap-4">
-            <div className="border border-gray-700 bg-black/40 p-4 rounded-lg flex-grow">
-              <h3 className="text-neon-green font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.keyActivities}</h3>
-              <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+            <div className={`${boxClass('gray-700')} flex-grow`}>
+              <h3 className={titleClass('neon-green')}>{t.canvasSections.keyActivities}</h3>
+              <ul className={listClass}>
                 {canvas.keyActivities.map((item, i) => <li key={i}>{item}</li>)}
               </ul>
             </div>
-            <div className="border border-gray-700 bg-black/40 p-4 rounded-lg flex-grow">
-              <h3 className="text-neon-green font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.keyResources}</h3>
-              <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+            <div className={`${boxClass('gray-700')} flex-grow`}>
+              <h3 className={titleClass('neon-green')}>{t.canvasSections.keyResources}</h3>
+              <ul className={listClass}>
                 {canvas.keyResources.map((item, i) => <li key={i}>{item}</li>)}
               </ul>
             </div>
           </div>
 
           {/* Center Block (Value Propositions) */}
-          <div className="lg:col-span-1 border border-neon-blue bg-neon-blue/5 p-4 rounded-lg flex flex-col">
-            <h3 className="text-white font-bold uppercase mb-4 text-sm tracking-wider flex items-center gap-2">
-               <span className="text-2xl">🎁</span> {t.canvasSections.valuePropositions}
+          <div className={`lg:col-span-1 flex flex-col ${isCorporate ? boxClass('black') : 'border border-neon-blue bg-neon-blue/5 p-4 rounded-lg'}`}>
+            <h3 className={isCorporate ? titleClass('black') : "text-white font-bold uppercase mb-4 text-sm tracking-wider flex items-center gap-2"}>
+               {!isCorporate && <span className="text-2xl">🎁</span>} {t.canvasSections.valuePropositions}
             </h3>
-            <ul className="list-disc list-inside text-white text-sm space-y-3 flex-grow font-medium">
+            <ul className={`${isCorporate ? listClass : 'list-disc list-inside text-white text-sm space-y-3 flex-grow font-medium'}`}>
               {canvas.valuePropositions.map((item, i) => <li key={i}>{item}</li>)}
             </ul>
           </div>
 
           {/* Right-Mid Block (Relationships & Channels) */}
           <div className="lg:col-span-1 flex flex-col gap-4">
-            <div className="border border-gray-700 bg-black/40 p-4 rounded-lg flex-grow">
-              <h3 className="text-neon-purple font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.customerRelationships}</h3>
-              <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+            <div className={`${boxClass('gray-700')} flex-grow`}>
+              <h3 className={titleClass('neon-purple')}>{t.canvasSections.customerRelationships}</h3>
+              <ul className={listClass}>
                 {canvas.customerRelationships.map((item, i) => <li key={i}>{item}</li>)}
               </ul>
             </div>
-            <div className="border border-gray-700 bg-black/40 p-4 rounded-lg flex-grow">
-              <h3 className="text-neon-purple font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.channels}</h3>
-              <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+            <div className={`${boxClass('gray-700')} flex-grow`}>
+              <h3 className={titleClass('neon-purple')}>{t.canvasSections.channels}</h3>
+              <ul className={listClass}>
                 {canvas.channels.map((item, i) => <li key={i}>{item}</li>)}
               </ul>
             </div>
           </div>
 
           {/* Right Block (Customer Segments) */}
-          <div className="lg:col-span-1 border border-gray-700 bg-black/40 p-4 rounded-lg flex flex-col">
-            <h3 className="text-neon-yellow font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.customerSegments}</h3>
-            <ul className="list-disc list-inside text-gray-300 text-sm space-y-2 flex-grow">
+          <div className={`lg:col-span-1 flex flex-col ${boxClass('gray-700')}`}>
+            <h3 className={titleClass('neon-yellow')}>{t.canvasSections.customerSegments}</h3>
+            <ul className={`${listClass} flex-grow`}>
               {canvas.customerSegments.map((item, i) => <li key={i}>{item}</li>)}
             </ul>
           </div>
@@ -1242,15 +1302,15 @@ const App: React.FC = () => {
 
         {/* Bottom Row: Cost & Revenue */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-          <div className="border border-red-900/50 bg-red-900/10 p-4 rounded-lg">
-            <h3 className="text-red-400 font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.costStructure}</h3>
-            <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+          <div className={isCorporate ? boxClass('red-900') : "border border-red-900/50 bg-red-900/10 p-4 rounded-lg"}>
+            <h3 className={isCorporate ? titleClass('black') : "text-red-400 font-bold uppercase mb-4 text-sm tracking-wider"}>{t.canvasSections.costStructure}</h3>
+            <ul className={listClass}>
               {canvas.costStructure.map((item, i) => <li key={i}>{item}</li>)}
             </ul>
           </div>
-          <div className="border border-green-900/50 bg-green-900/10 p-4 rounded-lg">
-            <h3 className="text-green-400 font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.revenueStreams}</h3>
-            <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+          <div className={isCorporate ? boxClass('green-900') : "border border-green-900/50 bg-green-900/10 p-4 rounded-lg"}>
+            <h3 className={isCorporate ? titleClass('black') : "text-green-400 font-bold uppercase mb-4 text-sm tracking-wider"}>{t.canvasSections.revenueStreams}</h3>
+            <ul className={listClass}>
               {canvas.revenueStreams.map((item, i) => <li key={i}>{item}</li>)}
             </ul>
           </div>
@@ -1475,6 +1535,69 @@ const App: React.FC = () => {
                                         <div className="text-right text-neon-green font-bold text-sm">{financials.estimatedMonthlySales} {t.roi.metrics.units}</div>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Landed Cost Toggle Section */}
+                            <div className="bg-gray-900 border border-gray-700 p-4 rounded-lg">
+                                <div className="flex items-center justify-between mb-4">
+                                    <label className="text-xs text-neon-yellow font-bold uppercase tracking-wider flex items-center gap-2 cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={landedCost.enabled} 
+                                            onChange={(e) => setLandedCost({...landedCost, enabled: e.target.checked})}
+                                            className="form-checkbox h-4 w-4 text-neon-yellow bg-gray-800 border-gray-600 rounded focus:ring-0 focus:ring-offset-0"
+                                        />
+                                        {t.roi.landedCost.toggle}
+                                    </label>
+                                </div>
+                                
+                                {landedCost.enabled && (
+                                    <div className="grid grid-cols-2 gap-4 animate-[fadeIn_0.3s_ease-out]">
+                                        <div>
+                                            <label className="text-[10px] text-gray-400 uppercase">{t.roi.landedCost.shipping}</label>
+                                            <input 
+                                                type="number" 
+                                                value={landedCost.shipping} 
+                                                onChange={(e) => setLandedCost({...landedCost, shipping: Number(e.target.value)})}
+                                                className="w-full bg-black/50 border border-gray-700 rounded p-1 text-white text-xs"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-gray-400 uppercase">{t.roi.landedCost.customs}</label>
+                                            <input 
+                                                type="number" 
+                                                value={landedCost.customs} 
+                                                onChange={(e) => setLandedCost({...landedCost, customs: Number(e.target.value)})}
+                                                className="w-full bg-black/50 border border-gray-700 rounded p-1 text-white text-xs"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-gray-400 uppercase">{t.roi.landedCost.vat}</label>
+                                            <input 
+                                                type="number" 
+                                                value={landedCost.vat} 
+                                                onChange={(e) => setLandedCost({...landedCost, vat: Number(e.target.value)})}
+                                                className="w-full bg-black/50 border border-gray-700 rounded p-1 text-white text-xs"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] text-gray-400 uppercase">{t.roi.landedCost.fees}</label>
+                                            <input 
+                                                type="number" 
+                                                value={landedCost.fees} 
+                                                onChange={(e) => setLandedCost({...landedCost, fees: Number(e.target.value)})}
+                                                className="w-full bg-black/50 border border-gray-700 rounded p-1 text-white text-xs"
+                                            />
+                                        </div>
+                                        <div className="col-span-2 border-t border-gray-700 pt-2 flex justify-between items-center">
+                                            <span className="text-xs text-gray-400 uppercase">{t.roi.landedCost.total}:</span>
+                                            <span className="text-neon-yellow font-bold text-sm">
+                                                {financials.currency}
+                                                {metrics?.adjustedInvestment.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Results Section */}
