@@ -27,6 +27,7 @@ interface LocaleStrings {
     home: string;
     profile: string;
     admin: string;
+    lender: string;
     community: string;
     about: string;
     logout: string;
@@ -41,6 +42,7 @@ interface LocaleStrings {
     googleBtn: string;
     fbBtn: string;
     guestBtn: string;
+    lenderBtn: string;
   };
   dashboard: {
     title: string;
@@ -62,6 +64,26 @@ interface LocaleStrings {
     updateProfileHint: string;
     recTag: string;
     systemLogs: string;
+    requestFunding: string;
+  };
+  lender: {
+      dashboardTitle: string;
+      queue: string;
+      riskAnalysis: string;
+      analyzeBtn: string;
+      score: string;
+      verdict: string;
+      approved: string;
+      conditional: string;
+      rejected: string;
+      strengths: string;
+      weaknesses: string;
+      stipulations: string;
+      maxLoan: string;
+      emptyQueue: string;
+      applicationDate: string;
+      applicant: string;
+      requested: string;
   };
   community: {
     title: string;
@@ -143,6 +165,7 @@ interface LocaleStrings {
     financials: string;
     roadmap: string;
     sourcing: string;
+    riskReport: string;
   };
   industries: Record<string, string>;
   canvasSections: Record<string, string>;
@@ -232,6 +255,7 @@ interface LocaleStrings {
     stressTestFail: string;
     financialsFail: string;
     roadmapFail: string;
+    riskReportFail: string;
   }
 }
 
@@ -263,6 +287,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       home: "Scanner",
       profile: "Profile",
       admin: "Admin Deck",
+      lender: "Lender Console",
       community: "Community",
       about: "About",
       logout: "Log Out",
@@ -276,7 +301,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       loginBtn: "Initialize Session",
       googleBtn: "Continue with Google",
       fbBtn: "Continue with Facebook",
-      guestBtn: "Enter as Admin (Guest)"
+      guestBtn: "Enter as Admin (Guest)",
+      lenderBtn: "Enter as Lender (Guest)"
     },
     dashboard: {
       title: "DASHBOARD",
@@ -297,7 +323,27 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       scanningRecs: "Scanning Neural Network for Matches...",
       updateProfileHint: "Update your profile to receive AI-powered recommendations.",
       recTag: "REC",
-      systemLogs: "System Logs"
+      systemLogs: "System Logs",
+      requestFunding: "Request Funding"
+    },
+    lender: {
+        dashboardTitle: "CREDIT RISK CONSOLE",
+        queue: "Application Queue",
+        riskAnalysis: "AI Risk Analysis",
+        analyzeBtn: "Run Credit Risk Model",
+        score: "Risk Score",
+        verdict: "AI Verdict",
+        approved: "APPROVED",
+        conditional: "CONDITIONAL",
+        rejected: "REJECTED",
+        strengths: "Key Strengths",
+        weaknesses: "Risk Factors",
+        stipulations: "Stipulations",
+        maxLoan: "Max Loan Cap",
+        emptyQueue: "Queue Empty. Waiting for applications.",
+        applicationDate: "Date Applied",
+        applicant: "Applicant",
+        requested: "Requested"
     },
     community: {
       title: "NEON HIVE",
@@ -397,7 +443,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       stressTest: "Running Failure Simulations...",
       financials: "Estimating Financial Data...",
       roadmap: "Constructing Mission Timeline...",
-      sourcing: "Locating Verified Suppliers..."
+      sourcing: "Locating Verified Suppliers...",
+      riskReport: "Analyzing Credit Risk Models..."
     },
     industries: {
       'agri': 'Agriculture & Farming',
@@ -525,7 +572,8 @@ ${user}`
       loginFail: "Authentication Failed. Use 'admin'/'admin' or 'user'/'user'.",
       stressTestFail: "Simulation failed. Neural link unstable.",
       financialsFail: "Could not generate estimates.",
-      roadmapFail: "Timeline construction failed."
+      roadmapFail: "Timeline construction failed.",
+      riskReportFail: "Risk Analysis Model failed to converge."
     }
   },
   am: {
@@ -555,6 +603,7 @@ ${user}`
       home: "ስካነር",
       profile: "መገለጫ",
       admin: "አድሚን",
+      lender: "አበዳሪ",
       community: "ማህበረሰብ",
       about: "ስለ እኛ",
       logout: "ውጣ",
@@ -568,7 +617,8 @@ ${user}`
       loginBtn: "ወደ ውስጥ ግባ",
       googleBtn: "በ Google ይቀጥሉ",
       fbBtn: "በ Facebook ይቀጥሉ",
-      guestBtn: "እንደ እንግዳ ይግቡ (Admin)"
+      guestBtn: "እንደ እንግዳ ይግቡ (Admin)",
+      lenderBtn: "እንደ አበዳሪ ይግቡ"
     },
     dashboard: {
       title: "ዳሽቦርድ",
@@ -589,7 +639,27 @@ ${user}`
       scanningRecs: "የነርቭ አውታረ መረብን ለተዛማጅ በመቃኘት ላይ...",
       updateProfileHint: "በ AI የተጎለበተ ምክሮችን ለማግኘት መገለጫዎን ያዘምኑ።",
       recTag: "ምክር",
-      systemLogs: "የስርዓት ምዝግብ ማስታወሻዎች"
+      systemLogs: "የስርዓት ምዝግብ ማስታወሻዎች",
+      requestFunding: "የገንዘብ ድጋፍ ይጠይቁ"
+    },
+    lender: {
+        dashboardTitle: "የብድር ስጋት መቆጣጠሪያ",
+        queue: "የማመልከቻዎች ዝርዝር",
+        riskAnalysis: "AI የስጋት ትንተና",
+        analyzeBtn: "የስጋት ሞዴሉን ያሂዱ",
+        score: "የስጋት ውጤት",
+        verdict: "AI ውሳኔ",
+        approved: "ፀድቋል",
+        conditional: "በቅድመ ሁኔታ",
+        rejected: "ተቀባይነት የለውም",
+        strengths: "ጥንካሬዎች",
+        weaknesses: "የስጋት ምክንያቶች",
+        stipulations: "ቅድመ ሁኔታዎች",
+        maxLoan: "ከፍተኛ የብድር መጠን",
+        emptyQueue: "ምንም ማመልከቻ የለም።",
+        applicationDate: "የማመልከቻ ቀን",
+        applicant: "አመልካች",
+        requested: "የተጠየቀው"
     },
     community: {
       title: "NEON HIVE",
@@ -689,7 +759,8 @@ ${user}`
       stressTest: "ሽንፈት ማስመሰሎችን በማስኬድ ላይ...",
       financials: "የፋይናንስ መረጃን በማምጣት ላይ...",
       roadmap: "የተልዕኮ ጊዜን በመገንባት ላይ...",
-      sourcing: "የተረጋገጡ አቅራቢዎችን በመፈለግ ላይ..."
+      sourcing: "የተረጋገጡ አቅራቢዎችን በመፈለግ ላይ...",
+      riskReport: "የብድር ስጋት ሞዴሎችን በመተንተን ላይ..."
     },
     industries: {
       'agri': 'ግብርና እና እርሻ',
@@ -817,7 +888,8 @@ ${user}`
       loginFail: "የተሳሳተ መረጃ። 'admin'/'admin' ወይም 'user'/'user' ይጠቀሙ።",
       stressTestFail: "ማስመሰል አልተሳካም።",
       financialsFail: "ግምቶችን ማመንጨት አልተቻለም።",
-      roadmapFail: "የጊዜ ሰሌዳ ግንባታ አልተሳካም።"
+      roadmapFail: "የጊዜ ሰሌዳ ግንባታ አልተሳካም።",
+      riskReportFail: "የብድር ስጋት ትንተና አልተሳካም."
     }
   }
 };

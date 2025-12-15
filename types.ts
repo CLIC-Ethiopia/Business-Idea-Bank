@@ -1,3 +1,4 @@
+
 export interface Industry {
   id: string;
   name: string;
@@ -52,6 +53,29 @@ export interface FinancialEstimates {
   currency: string;
 }
 
+export interface CreditRiskReport {
+  score: number;
+  riskLevel: 'Low' | 'Moderate' | 'High' | 'Critical';
+  dscr: number;
+  ltv: number;
+  strengths: string[];
+  weaknesses: string[];
+  stipulations: string[];
+  verdict: 'Approved' | 'Conditional' | 'Rejected';
+  maxLoanAmount: number;
+}
+
+export interface LoanApplication {
+  id: string;
+  applicantName: string;
+  businessIdea: BusinessIdea;
+  loanAmount: number;
+  downPayment: number;
+  creditScore: number; // Self-reported for simulation
+  status: 'Pending' | 'Reviewing' | 'Approved' | 'Rejected';
+  timestamp: number;
+}
+
 export interface RoadmapPhase {
   phaseName: string;
   duration: string;
@@ -87,7 +111,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'lender';
   avatar?: string;
   profile?: UserProfile;
 }
@@ -116,6 +140,7 @@ export enum AppState {
   VIEW_CANVAS,
   ABOUT,
   ADMIN_DASHBOARD,
+  LENDER_DASHBOARD,
   COMMUNITY
 }
 

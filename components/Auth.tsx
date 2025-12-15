@@ -5,7 +5,7 @@ import { supabase } from '../services/supabaseClient';
 interface AuthProps {
   t: any;
   error?: string | null;
-  onGuestLogin: () => void;
+  onGuestLogin: (role?: 'admin' | 'lender') => void;
 }
 
 export const Auth: React.FC<AuthProps> = ({ t, error: propError, onGuestLogin }) => {
@@ -141,10 +141,17 @@ export const Auth: React.FC<AuthProps> = ({ t, error: propError, onGuestLogin })
 
         <div className="space-y-3">
             <button 
-              onClick={onGuestLogin}
+              onClick={() => onGuestLogin('admin')}
               className="w-full bg-transparent border border-neon-green text-neon-green font-bold py-3 rounded flex items-center justify-center hover:bg-neon-green hover:text-black transition-colors uppercase tracking-widest"
             >
                {t.login.guestBtn}
+            </button>
+
+             <button 
+              onClick={() => onGuestLogin('lender')}
+              className="w-full bg-transparent border border-neon-yellow text-neon-yellow font-bold py-3 rounded flex items-center justify-center hover:bg-neon-yellow hover:text-black transition-colors uppercase tracking-widest"
+            >
+               {t.login.lenderBtn}
             </button>
 
             <button 
@@ -154,14 +161,6 @@ export const Auth: React.FC<AuthProps> = ({ t, error: propError, onGuestLogin })
             >
                <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z"/></svg>
                {t.login.googleBtn}
-            </button>
-            <button 
-                 onClick={() => socialLogin('facebook')}
-                 disabled={isProcessing}
-                 className="w-full bg-[#1877F2] text-white font-bold py-3 rounded flex items-center justify-center hover:bg-[#166fe5] transition-colors"
-            >
-               <svg className="w-5 h-5 mr-3" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-               {t.login.fbBtn}
             </button>
         </div>
       </NeonCard>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, NeonText, LoadingScan } from './NeonUI';
-import { User, BusinessIdea, Industry, UserProfile } from '../types';
+import { User, BusinessIdea, Industry, UserProfile, LoanApplication, CreditRiskReport } from '../types';
 import { INDUSTRIES } from '../constants';
 import { supabase } from '../services/supabaseClient';
 
@@ -36,6 +36,11 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
   const handleUpdate = () => {
     onGenerateRecommendations(profile);
+  };
+
+  const handleRequestFunding = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      alert("Application sent to Lender Network. Check status in 24h.");
   };
 
   return (
@@ -159,9 +164,18 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                       </div>
                       <p className="text-neon-blue text-xs mb-2">{idea.machineName}</p>
                       <p className="text-gray-400 text-xs mb-3 line-clamp-2">{idea.description}</p>
-                      <NeonButton color="purple" fullWidth onClick={() => onViewIdea(idea)} className="mt-auto text-xs py-1.5">
-                          {t.detailsBtn}
-                      </NeonButton>
+                      <div className="mt-auto flex gap-2">
+                        <NeonButton color="purple" fullWidth onClick={() => onViewIdea(idea)} className="text-xs py-1.5">
+                            {t.detailsBtn}
+                        </NeonButton>
+                        <button 
+                            onClick={handleRequestFunding}
+                            className="bg-gray-800 hover:bg-neon-yellow hover:text-black text-neon-yellow border border-neon-yellow px-2 rounded text-xs uppercase font-bold transition-colors"
+                            title="Request Funding"
+                        >
+                            $
+                        </button>
+                      </div>
                    </NeonCard>
                  ))}
               </div>
@@ -462,4 +476,224 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
       </NeonCard>
     </div>
   );
+};
+
+interface LenderDashboardProps {
+    user: User;
+    onAnalyze: (application: LoanApplication) => Promise<CreditRiskReport | null>;
+    t: any;
+}
+
+export const LenderDashboard: React.FC<LenderDashboardProps> = ({ user, onAnalyze, t }) => {
+    // Mock Data for Applications
+    const [applications, setApplications] = useState<LoanApplication[]>([
+        {
+            id: 'app-001',
+            applicantName: 'Sarah Connor',
+            businessIdea: {
+                id: 'idea-1',
+                machineName: 'Industrial Laser Cutter 150W',
+                businessTitle: 'Custom Metal Fabrication Shop',
+                description: 'Using a high-power laser cutter to create custom signage, parts, and decor. High margin potential with local businesses.',
+                priceRange: '$4,500 - $6,000',
+                platformSource: 'Alibaba',
+                potentialRevenue: '$8,000/month',
+                operationalRequirements: ['3-phase power', 'Ventilation', 'Industrial Zone'],
+            },
+            loanAmount: 8500,
+            downPayment: 1500,
+            creditScore: 720,
+            status: 'Pending',
+            timestamp: Date.now() - 86400000
+        },
+        {
+            id: 'app-002',
+            applicantName: 'John Wick',
+            businessIdea: {
+                id: 'idea-2',
+                machineName: 'Mobile Concrete Mixer Truck (Mini)',
+                businessTitle: 'Rapid Response Concrete Service',
+                description: 'Small batch concrete delivery for residential projects. Fills a gap left by large mix trucks.',
+                priceRange: '$12,000 - $18,000',
+                platformSource: 'Global Sources',
+                potentialRevenue: '$15,000/month',
+                operationalRequirements: ['CDL License', 'Parking Yard', 'Water Source'],
+            },
+            loanAmount: 16000,
+            downPayment: 4000,
+            creditScore: 650,
+            status: 'Pending',
+            timestamp: Date.now() - 3600000
+        }
+    ]);
+
+    const [selectedApp, setSelectedApp] = useState<LoanApplication | null>(null);
+    const [report, setReport] = useState<CreditRiskReport | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleSelect = (app: LoanApplication) => {
+        setSelectedApp(app);
+        setReport(null); // Reset report when selecting new app
+    };
+
+    const handleAnalyze = async () => {
+        if (!selectedApp) return;
+        setLoading(true);
+        const result = await onAnalyze(selectedApp);
+        setReport(result);
+        setLoading(false);
+    };
+
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <div className="mb-8 flex justify-between items-end">
+                <div>
+                    <h2 className="text-3xl font-bold text-neon-yellow mb-2 tracking-widest">{t.lender.dashboardTitle}</h2>
+                    <p className="text-gray-400 font-mono text-sm">{t.dashboard.welcome(user.name)} | {t.lender.queue}: {applications.length}</p>
+                </div>
+                <div className="text-right">
+                    <div className="text-xs text-neon-yellow border border-neon-yellow px-2 py-1 rounded font-bold uppercase">Authorized Access Only</div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                {/* Left Column: List */}
+                <div className="lg:col-span-4 space-y-4">
+                    {applications.length === 0 ? (
+                        <div className="text-gray-500 italic p-4 border border-dashed border-gray-800 rounded">{t.lender.emptyQueue}</div>
+                    ) : (
+                        applications.map(app => (
+                            <div 
+                                key={app.id} 
+                                onClick={() => handleSelect(app)}
+                                className={`p-4 rounded border cursor-pointer transition-all ${selectedApp?.id === app.id ? 'bg-neon-yellow/10 border-neon-yellow' : 'bg-dark-card border-gray-800 hover:border-gray-600'}`}
+                            >
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="text-neon-yellow font-bold text-sm">{app.id}</span>
+                                    <span className="text-[10px] text-gray-500">{new Date(app.timestamp).toLocaleDateString()}</span>
+                                </div>
+                                <h4 className="text-white font-bold mb-1">{app.applicantName}</h4>
+                                <div className="text-xs text-gray-400 mb-2">{app.businessIdea.businessTitle}</div>
+                                <div className="flex justify-between items-center text-xs">
+                                    <span className="text-gray-500">{t.lender.requested}:</span>
+                                    <span className="text-white font-mono">${app.loanAmount.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        ))
+                    )}
+                </div>
+
+                {/* Right Column: Detail & Analysis */}
+                <div className="lg:col-span-8">
+                    {selectedApp ? (
+                        <NeonCard color="yellow" hoverEffect={false} className="h-full">
+                            <div className="flex justify-between items-start mb-6 border-b border-gray-800 pb-4">
+                                <div>
+                                    <h3 className="text-2xl font-bold text-white mb-1">{selectedApp.applicantName}</h3>
+                                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                                        <span>Credit Score: <span className="text-neon-yellow font-bold">{selectedApp.creditScore}</span></span>
+                                        <span>|</span>
+                                        <span>Down Payment: <span className="text-white font-bold">${selectedApp.downPayment.toLocaleString()}</span></span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <div className="text-xs text-gray-500 uppercase">Loan Amount</div>
+                                    <div className="text-3xl font-bold text-neon-yellow">${selectedApp.loanAmount.toLocaleString()}</div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <div className="bg-black/30 p-4 rounded border border-gray-800">
+                                    <h4 className="text-neon-blue text-xs font-bold uppercase mb-2">Business Asset</h4>
+                                    <p className="text-white font-bold mb-1">{selectedApp.businessIdea.businessTitle}</p>
+                                    <p className="text-gray-400 text-xs mb-2">{selectedApp.businessIdea.machineName}</p>
+                                    <p className="text-gray-500 text-xs leading-relaxed">{selectedApp.businessIdea.description}</p>
+                                </div>
+                                <div className="flex flex-col justify-center items-center">
+                                    {!report ? (
+                                        <NeonButton color="yellow" onClick={handleAnalyze} disabled={loading} className="w-full h-full flex flex-col items-center justify-center gap-2">
+                                            {loading ? (
+                                                <>
+                                                    <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                                                    <span>{t.loading.riskReport}</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span className="text-2xl">⚡</span>
+                                                    <span>{t.lender.analyzeBtn}</span>
+                                                </>
+                                            )}
+                                        </NeonButton>
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-neon-yellow/5 border border-neon-yellow/30 rounded text-center">
+                                            <div className="text-xs text-neon-yellow uppercase font-bold mb-1">{t.lender.score}</div>
+                                            <div className="text-5xl font-bold text-white mb-2">{report.score}</div>
+                                            <div className={`text-sm font-bold px-3 py-1 rounded uppercase ${
+                                                report.verdict === 'Approved' ? 'bg-green-500 text-black' : 
+                                                report.verdict === 'Conditional' ? 'bg-yellow-500 text-black' : 'bg-red-500 text-white'
+                                            }`}>
+                                                {report.verdict}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {report && (
+                                <div className="animate-[fadeIn_0.5s_ease-out] space-y-6 border-t border-gray-800 pt-6">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                                        <div className="bg-black/40 p-2 rounded">
+                                            <div className="text-[10px] text-gray-500 uppercase">Risk Level</div>
+                                            <div className="font-bold text-white">{report.riskLevel}</div>
+                                        </div>
+                                        <div className="bg-black/40 p-2 rounded">
+                                            <div className="text-[10px] text-gray-500 uppercase">DSCR</div>
+                                            <div className="font-bold text-neon-yellow">{report.dscr}x</div>
+                                        </div>
+                                        <div className="bg-black/40 p-2 rounded">
+                                            <div className="text-[10px] text-gray-500 uppercase">LTV</div>
+                                            <div className="font-bold text-neon-yellow">{report.ltv}%</div>
+                                        </div>
+                                        <div className="bg-black/40 p-2 rounded">
+                                            <div className="text-[10px] text-gray-500 uppercase">{t.lender.maxLoan}</div>
+                                            <div className="font-bold text-white">${report.maxLoanAmount.toLocaleString()}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div>
+                                            <h4 className="text-green-500 text-xs font-bold uppercase mb-2">{t.lender.strengths}</h4>
+                                            <ul className="list-disc list-inside text-xs text-gray-300 space-y-1">
+                                                {report.strengths.map((s, i) => <li key={i}>{s}</li>)}
+                                            </ul>
+                                        </div>
+                                        <div>
+                                            <h4 className="text-red-500 text-xs font-bold uppercase mb-2">{t.lender.weaknesses}</h4>
+                                            <ul className="list-disc list-inside text-xs text-gray-300 space-y-1">
+                                                {report.weaknesses.map((w, i) => <li key={i}>{w}</li>)}
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    {report.stipulations.length > 0 && (
+                                        <div className="bg-yellow-900/20 border border-yellow-900/50 p-4 rounded">
+                                            <h4 className="text-yellow-500 text-xs font-bold uppercase mb-2">{t.lender.stipulations}</h4>
+                                            <ul className="list-disc list-inside text-xs text-gray-300 space-y-1">
+                                                {report.stipulations.map((s, i) => <li key={i}>{s}</li>)}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                        </NeonCard>
+                    ) : (
+                        <div className="h-full flex items-center justify-center text-gray-500 border border-dashed border-gray-800 rounded">
+                            Select an application to view details
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
 };

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { INDUSTRIES } from './constants';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, LoadingScan, NeonModal } from './components/NeonUI';
-import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails, generateStressTest, generateFinancialEstimates, generateRoadmap, findMachineSuppliers } from './services/geminiService';
-import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User, CommunityPost, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink } from './types';
+import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails, generateStressTest, generateFinancialEstimates, generateRoadmap, findMachineSuppliers, generateCreditRiskReport } from './services/geminiService';
+import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User, CommunityPost, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, LoanApplication, CreditRiskReport } from './types';
 import { TRANSLATIONS } from './locales';
 import { Auth } from './components/Auth';
-import { UserDashboard, AdminDashboard } from './components/Dashboards';
+import { UserDashboard, AdminDashboard, LenderDashboard } from './components/Dashboards';
 import { Community } from './components/Community';
 import { About } from './components/About';
 import { supabase } from './services/supabaseClient';
@@ -58,6 +58,12 @@ const CommunityIcon = () => (
   </svg>
 );
 
+const BankIcon = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+  </svg>
+);
+
 const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [appState, setAppState] = useState<AppState>(AppState.LOGIN);
@@ -77,7 +83,7 @@ const App: React.FC = () => {
   const [savedIdeas, setSavedIdeas] = useState<BusinessIdea[]>([]);
   const [customIdeas, setCustomIdeas] = useState<BusinessIdea[]>([]);
   
-  // Community Posts State (Mocked for immediate functionality)
+  // Community Posts State
   const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>([
       {
           id: '1',
@@ -87,7 +93,7 @@ const App: React.FC = () => {
           industryId: 'waste',
           likes: 12,
           comments: 3,
-          timestamp: Date.now() - 3600000 // 1 hour ago
+          timestamp: Date.now() - 3600000 
       },
       {
           id: '2',
@@ -97,7 +103,7 @@ const App: React.FC = () => {
           industryId: 'agri',
           likes: 8,
           comments: 1,
-          timestamp: Date.now() - 7200000 // 2 hours ago
+          timestamp: Date.now() - 7200000 
       },
        {
           id: '3',
@@ -107,7 +113,7 @@ const App: React.FC = () => {
           industryId: 'heavy_mfg',
           likes: 24,
           comments: 6,
-          timestamp: Date.now() - 86400000 // 1 day ago
+          timestamp: Date.now() - 86400000
       }
   ]);
 
@@ -187,14 +193,14 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleGuestLogin = () => {
+  const handleGuestLogin = (role: 'admin' | 'lender' = 'admin') => {
       const guestUser: User = {
           id: 'guest',
-          email: 'guest@neon.com',
-          name: 'Guest Operative',
-          role: 'admin', // GRANT ADMIN ROLE TO GUEST FOR DEMO
+          email: role === 'lender' ? 'lender@neon.com' : 'guest@neon.com',
+          name: role === 'lender' ? 'Credit Officer' : 'Guest Operative',
+          role: role, 
           profile: {
-            name: 'Guest Operative',
+            name: role === 'lender' ? 'Credit Officer' : 'Guest Operative',
             budget: '$1,000 - $5,000',
             skills: '',
             interests: '',
@@ -206,7 +212,8 @@ const App: React.FC = () => {
       };
       setCurrentUser(guestUser);
       setUserProfile(guestUser.profile!);
-      setAppState(AppState.SELECT_INDUSTRY);
+      // Route based on role
+      setAppState(role === 'lender' ? AppState.LENDER_DASHBOARD : AppState.SELECT_INDUSTRY);
   };
 
   // 2. Fetch Profile & Saved Ideas when Session Exists
@@ -372,9 +379,6 @@ const App: React.FC = () => {
           }
           return i;
       }));
-
-      // In a real backend scenario, we would fire a Supabase call here.
-      // Since this is a generated idea, we just persist it locally for the session.
   };
 
   const handleAdminAddIdea = (idea: BusinessIdea) => {
@@ -409,6 +413,10 @@ const App: React.FC = () => {
       } finally {
           setIsGeneratingRecs(false);
       }
+  };
+  
+  const handleAnalyzeCreditRisk = async (application: LoanApplication): Promise<CreditRiskReport | null> => {
+      return await generateCreditRiskReport(application, language);
   };
 
   // Community Post Handling
@@ -857,7 +865,6 @@ const App: React.FC = () => {
   // Render Functions
 
   const renderNavBar = () => {
-      // Logic modified to show NavBar container even when logged out
       return (
           <div className="flex justify-between items-center p-4 bg-black border-b border-gray-900 sticky top-0 z-20 backdrop-blur-md bg-opacity-80">
               <div className="flex items-center gap-4">
@@ -866,7 +873,7 @@ const App: React.FC = () => {
                       <span className="text-neon-blue">ID</span>
                   </span>
                   
-                  {/* Nav Links - ALWAYS VISIBLE (removed hidden md:flex) */}
+                  {/* Nav Links */}
                   <div className="flex items-center gap-6 ml-8 flex-wrap">
                      {/* Show Home/Profile only if logged in */}
                      {currentUser && (
@@ -895,6 +902,14 @@ const App: React.FC = () => {
                                 className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.ADMIN_DASHBOARD ? 'text-neon-blue' : 'text-gray-500'}`}
                             >
                                 <AdminIcon /> {t.nav.admin}
+                            </button>
+                        )}
+                        {currentUser.role === 'lender' && (
+                            <button 
+                                onClick={() => setAppState(AppState.LENDER_DASHBOARD)}
+                                className={`text-xs uppercase tracking-widest hover:text-white transition-colors flex items-center gap-1 ${appState === AppState.LENDER_DASHBOARD ? 'text-neon-yellow' : 'text-gray-500'}`}
+                            >
+                                <BankIcon /> {t.nav.lender}
                             </button>
                         )}
                         </>
@@ -1110,9 +1125,6 @@ const App: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
         {sortedIdeas.map((idea, idx) => {
           const isSaved = savedIdeas.some(i => i.businessTitle === idea.businessTitle || i.id === idea.id);
-          // Use a unique key based on idea data to ensure React reorders properly
-          // idx is bad because it doesn't change when order changes
-          // idea.id is best if unique, otherwise hash the title
           const uniqueKey = idea.id || `${idea.businessTitle.replace(/\s+/g, '')}-${idx}`;
           
           return (
@@ -1833,7 +1845,14 @@ const App: React.FC = () => {
                 </div>
             )}
 
-            <div className="mt-8 pt-4 border-t border-gray-800 flex justify-end">
+            <div className="mt-8 pt-4 border-t border-gray-800 flex justify-end items-center gap-4">
+               <NeonButton 
+                   color="pink" 
+                   onClick={() => handleIdeaSelect(detailIdea)}
+                   className="text-xs py-2 px-6"
+               >
+                   {t.analyzeBtn}
+               </NeonButton>
                <button onClick={closeDetails} className="text-gray-400 hover:text-white text-sm font-bold uppercase tracking-widest px-4 py-2">
                    {t.closeBtn}
                </button>
@@ -1891,6 +1910,20 @@ const App: React.FC = () => {
            <AdminDashboard 
               user={currentUser} 
               onAddIdea={handleAdminAddIdea}
+              t={t}
+           />
+        </div>
+      )
+  }
+
+  // Lender Dashboard Screen
+  if (appState === AppState.LENDER_DASHBOARD && currentUser && currentUser.role === 'lender') {
+      return (
+        <div className="min-h-screen bg-black text-white font-sans selection:bg-neon-pink selection:text-white">
+           {renderNavBar()}
+           <LenderDashboard 
+              user={currentUser} 
+              onAnalyze={handleAnalyzeCreditRisk}
               t={t}
            />
         </div>

@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink } from "../types";
+import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, CreditRiskReport, LoanApplication } from "../types";
 import { fetchMachineImage } from "./googleSearchService";
 
 const apiKey = process.env.API_KEY || '';
@@ -63,6 +63,23 @@ const financialEstimatesSchema: Schema = {
     currency: { type: Type.STRING, description: "Currency symbol, usually $" }
   },
   required: ["initialInvestment", "monthlyFixedCosts", "costPerUnit", "pricePerUnit", "estimatedMonthlySales", "currency"]
+};
+
+// Schema for Credit Risk Report
+const creditRiskSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    score: { type: Type.NUMBER, description: "Credit score 0-100" },
+    riskLevel: { type: Type.STRING, enum: ['Low', 'Moderate', 'High', 'Critical'] },
+    dscr: { type: Type.NUMBER, description: "Debt Service Coverage Ratio (e.g. 1.25)" },
+    ltv: { type: Type.NUMBER, description: "Loan to Value ratio percentage (e.g. 80)" },
+    strengths: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 key strengths of the application" },
+    weaknesses: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 key weaknesses or risks" },
+    stipulations: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Conditions for approval (e.g. higher down payment)" },
+    verdict: { type: Type.STRING, enum: ['Approved', 'Conditional', 'Rejected'] },
+    maxLoanAmount: { type: Type.NUMBER, description: "Maximum recommended loan amount in USD" }
+  },
+  required: ["score", "riskLevel", "dscr", "ltv", "strengths", "weaknesses", "stipulations", "verdict", "maxLoanAmount"]
 };
 
 // Schema for Roadmap
@@ -452,6 +469,63 @@ export const generateCanvas = async (idea: BusinessIdea, language: Language): Pr
     console.error("Error generating canvas:", error);
     return null;
   }
+};
+
+export const generateCreditRiskReport = async (
+    application: LoanApplication, 
+    language: Language
+): Promise<CreditRiskReport | null> => {
+    try {
+        const langInstruction = language === 'am' 
+            ? "IMPORTANT: Provide all text content in Amharic language. Keep the JSON structure and keys in English."
+            : "Provide content in English.";
+
+        const prompt = `
+            Act as a strict Senior Credit Risk Underwriter for a FinTech lender.
+            Evaluate this loan application for a small business equipment loan.
+
+            Application Details:
+            - Applicant Name: ${application.applicantName}
+            - Self-Reported Credit Score: ${application.creditScore}
+            - Loan Amount Requested: $${application.loanAmount}
+            - Down Payment: $${application.downPayment}
+            
+            Business Asset (Collateral):
+            - Machine: ${application.businessIdea.machineName}
+            - Business: ${application.businessIdea.businessTitle}
+            - Description: ${application.businessIdea.description}
+            - Estimated Revenue: ${application.businessIdea.potentialRevenue}
+
+            Task:
+            1. Calculate a Risk Score (0-100). 100 is perfect.
+            2. Estimate DSCR (Debt Service Coverage Ratio) based on potential revenue vs loan payment.
+            3. Calculate LTV (Loan to Value) based on loan amount vs approximate machine cost.
+            4. Identify Strengths (Collateral value, down payment size, etc).
+            5. Identify Weaknesses (Startup risk, credit score, etc).
+            6. Provide a Verdict (Approved/Conditional/Rejected).
+            7. Set Stipulations if Conditional.
+
+            ${langInstruction}
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: creditRiskSchema,
+                temperature: 0.4
+            }
+        });
+
+        if (response.text) {
+            return JSON.parse(response.text) as CreditRiskReport;
+        }
+        return null;
+    } catch (error) {
+        console.error("Error generating credit risk report:", error);
+        return null;
+    }
 };
 
 export const streamChat = async function* (
