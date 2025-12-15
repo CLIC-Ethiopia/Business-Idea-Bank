@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { INDUSTRIES } from './constants';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, LoadingScan, NeonModal } from './components/NeonUI';
-import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails } from './services/geminiService';
-import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User, CommunityPost } from './types';
+import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails, generateStressTest, generateFinancialEstimates, generateRoadmap, findMachineSuppliers } from './services/geminiService';
+import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User, CommunityPost, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink } from './types';
 import { TRANSLATIONS } from './locales';
 import { Auth } from './components/Auth';
 import { UserDashboard, AdminDashboard } from './components/Dashboards';
@@ -64,6 +64,7 @@ const App: React.FC = () => {
   const [language, setLanguage] = useState<Language>('en');
   const [selectedIndustry, setSelectedIndustry] = useState<Industry | null>(null);
   const [ideas, setIdeas] = useState<BusinessIdea[]>([]);
+  const [sortMethod, setSortMethod] = useState<'newest' | 'upvotes'>('newest');
   const [selectedIdea, setSelectedIdea] = useState<BusinessIdea | null>(null);
   const [canvas, setCanvas] = useState<BusinessCanvas | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -117,6 +118,23 @@ const App: React.FC = () => {
   const [detailIdea, setDetailIdea] = useState<BusinessIdea | null>(null);
   const [businessDetails, setBusinessDetails] = useState<BusinessDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  
+  // Stress Test & ROI & Supplier State
+  const [activeDetailTab, setActiveDetailTab] = useState<'blueprint' | 'stress_test' | 'roi' | 'roadmap' | 'supplier'>('blueprint');
+  const [stressTestResult, setStressTestResult] = useState<StressTestAnalysis | null>(null);
+  const [loadingStressTest, setLoadingStressTest] = useState(false);
+  
+  // Financial Calculator State
+  const [financials, setFinancials] = useState<FinancialEstimates | null>(null);
+  const [loadingFinancials, setLoadingFinancials] = useState(false);
+  
+  // Roadmap State
+  const [roadmap, setRoadmap] = useState<Roadmap | null>(null);
+  const [loadingRoadmap, setLoadingRoadmap] = useState(false);
+
+  // Supplier Links State
+  const [sourcingLinks, setSourcingLinks] = useState<SourcingLink[] | null>(null);
+  const [loadingSourcing, setLoadingSourcing] = useState(false);
 
   // User Profile State (for idea generation wizard)
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -318,6 +336,37 @@ const App: React.FC = () => {
       }
   };
 
+  const handleUpvote = (idea: BusinessIdea) => {
+      // Optimistic update for the ideas list
+      setIdeas(prev => prev.map(i => {
+          if (i.businessTitle === idea.businessTitle) {
+              const wasUpvoted = i.isUpvoted;
+              return {
+                  ...i,
+                  upvotes: (i.upvotes || 0) + (wasUpvoted ? -1 : 1),
+                  isUpvoted: !wasUpvoted
+              };
+          }
+          return i;
+      }));
+
+      // Optimistic update for saved ideas
+      setSavedIdeas(prev => prev.map(i => {
+          if (i.id === idea.id) {
+              const wasUpvoted = i.isUpvoted;
+              return {
+                  ...i,
+                  upvotes: (i.upvotes || 0) + (wasUpvoted ? -1 : 1),
+                  isUpvoted: !wasUpvoted
+              };
+          }
+          return i;
+      }));
+
+      // In a real backend scenario, we would fire a Supabase call here.
+      // Since this is a generated idea, we just persist it locally for the session.
+  };
+
   const handleAdminAddIdea = (idea: BusinessIdea) => {
       setCustomIdeas(prev => [idea, ...prev]);
   };
@@ -403,7 +452,9 @@ const App: React.FC = () => {
         setError(t.errors.noIdeas);
         setAppState(AppState.SELECT_INDUSTRY);
       } else {
-        setIdeas(allIdeas);
+        // Initialize with 0 upvotes for fresh ideas
+        const ideasWithVotes = allIdeas.map(i => ({...i, upvotes: i.upvotes || 0}));
+        setIdeas(ideasWithVotes);
         setAppState(AppState.SELECT_IDEA);
       }
     } catch (e) {
@@ -437,7 +488,8 @@ const App: React.FC = () => {
         setError(t.errors.noIdeas);
         setAppState(AppState.USER_PROFILE);
       } else {
-        setIdeas(generatedIdeas);
+        const ideasWithVotes = generatedIdeas.map(i => ({...i, upvotes: i.upvotes || 0}));
+        setIdeas(ideasWithVotes);
         setSelectedIndustry({ id: 'custom', name: t.industries['custom'], icon: '🎯' });
         setAppState(AppState.SELECT_IDEA);
       }
@@ -467,7 +519,8 @@ const App: React.FC = () => {
             setIdeas(prev => {
                 const existingTitles = new Set(prev.map(i => i.businessTitle));
                 const filteredNew = newIdeas.filter(i => !existingTitles.has(i.businessTitle));
-                return [...prev, ...filteredNew];
+                const filteredNewWithVotes = filteredNew.map(i => ({...i, upvotes: 0}));
+                return [...prev, ...filteredNewWithVotes];
             });
         }
     } catch (e) {
@@ -481,6 +534,11 @@ const App: React.FC = () => {
   const handleViewDetails = async (idea: BusinessIdea) => {
     setDetailIdea(idea);
     setBusinessDetails(null);
+    setStressTestResult(null);
+    setFinancials(null);
+    setRoadmap(null);
+    setSourcingLinks(null); // Reset sourcing links
+    setActiveDetailTab('blueprint');
     setLoadingDetails(true);
     
     try {
@@ -505,10 +563,86 @@ const App: React.FC = () => {
     }
   };
 
+  const handleRunStressTest = async () => {
+    if (!detailIdea) return;
+    setActiveDetailTab('stress_test');
+    
+    if (stressTestResult) return; // Already loaded
+
+    setLoadingStressTest(true);
+    try {
+        const result = await generateStressTest(detailIdea, language);
+        setStressTestResult(result);
+    } catch (e) {
+        console.error("Stress test failed", e);
+    } finally {
+        setLoadingStressTest(false);
+    }
+  };
+  
+  const handleLoadFinancials = async () => {
+      if (!detailIdea) return;
+      setActiveDetailTab('roi');
+      
+      if (financials) return; // Already loaded
+
+      setLoadingFinancials(true);
+      try {
+          const result = await generateFinancialEstimates(detailIdea, language);
+          setFinancials(result);
+      } catch (e) {
+          console.error("Financials failed", e);
+      } finally {
+          setLoadingFinancials(false);
+      }
+  };
+  
+  const handleLoadRoadmap = async () => {
+      if (!detailIdea) return;
+      setActiveDetailTab('roadmap');
+      
+      if (roadmap) return; // Already loaded
+      
+      setLoadingRoadmap(true);
+      try {
+          const result = await generateRoadmap(detailIdea, language);
+          setRoadmap(result);
+      } catch (e) {
+          console.error("Roadmap failed", e);
+      } finally {
+          setLoadingRoadmap(false);
+      }
+  };
+
+  const handleLoadSourcing = async () => {
+      if (!detailIdea) return;
+      setActiveDetailTab('supplier');
+      
+      if (sourcingLinks) return; // Already loaded or previously empty
+
+      setLoadingSourcing(true);
+      try {
+          const links = await findMachineSuppliers(detailIdea.machineName);
+          setSourcingLinks(links);
+      } catch (e) {
+          console.error("Sourcing failed", e);
+      } finally {
+          setLoadingSourcing(false);
+      }
+  };
+
   const closeDetails = () => {
     setDetailIdea(null);
     setBusinessDetails(null);
+    setStressTestResult(null);
+    setFinancials(null);
+    setRoadmap(null);
+    setSourcingLinks(null);
     setLoadingDetails(false);
+    setLoadingStressTest(false);
+    setLoadingFinancials(false);
+    setLoadingRoadmap(false);
+    setLoadingSourcing(false);
   };
 
   const handleIdeaSelect = async (idea: BusinessIdea) => {
@@ -583,6 +717,30 @@ const App: React.FC = () => {
       }
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+        alert(t.supplier.copied);
+    });
+  };
+
+  const openSearch = (platform: string, machine: string) => {
+    let url = '';
+    const encodedMachine = encodeURIComponent(machine);
+    
+    if (platform === 'Alibaba') {
+        url = `https://www.alibaba.com/trade/search?SearchText=${encodedMachine}`;
+    } else if (platform === 'Amazon') {
+        url = `https://www.amazon.com/s?k=${encodedMachine}`;
+    } else if (platform === 'Global Sources') {
+        url = `https://www.globalsources.com/searchSites/trade/gs/search?searchString=${encodedMachine}`;
+    } else {
+        // Fallback to Google Shopping
+        url = `https://www.google.com/search?q=${encodedMachine}&tbm=shop`;
+    }
+    
+    window.open(url, '_blank');
+  };
+
   const reset = () => {
     setAppState(AppState.SELECT_INDUSTRY);
     setSelectedIndustry(null);
@@ -596,6 +754,20 @@ const App: React.FC = () => {
     setCanvas(null);
     setSelectedIdea(null);
   };
+
+  // Calculations for ROI
+  const calculateMetrics = () => {
+      if (!financials) return null;
+      
+      const margin = financials.pricePerUnit - financials.costPerUnit;
+      const monthlyProfit = (margin * financials.estimatedMonthlySales) - financials.monthlyFixedCosts;
+      const breakEvenUnits = margin > 0 ? Math.ceil(financials.monthlyFixedCosts / margin) : Infinity;
+      const breakEvenMonths = monthlyProfit > 0 ? Math.ceil(financials.initialInvestment / monthlyProfit) : Infinity;
+
+      return { margin, monthlyProfit, breakEvenUnits, breakEvenMonths };
+  };
+
+  const metrics = calculateMetrics();
 
   // Render Functions
 
@@ -806,15 +978,44 @@ const App: React.FC = () => {
     </div>
   );
 
-  const renderIdeaSelection = () => (
+  const renderIdeaSelection = () => {
+    // Sort logic
+    const sortedIdeas = [...ideas].sort((a, b) => {
+        if (sortMethod === 'upvotes') {
+            return (b.upvotes || 0) - (a.upvotes || 0);
+        }
+        return 0; // Default to natural order (newest generated usually)
+    });
+
+    return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <div className="flex gap-4 items-center">
             <button onClick={reset} className="flex items-center text-gray-400 hover:text-white transition-colors">
             <ArrowLeftIcon />
             <span className="ml-2 uppercase tracking-widest">{t.backToSectors}</span>
             </button>
         </div>
+        
+        {/* Sorting Controls */}
+        <div className="flex items-center gap-2">
+            <span className="text-gray-500 text-xs uppercase font-bold">{t.upvote.sort}</span>
+            <div className="flex bg-dark-card border border-gray-800 rounded p-1">
+                <button 
+                    onClick={() => setSortMethod('newest')}
+                    className={`px-3 py-1 text-xs uppercase font-bold rounded transition-colors ${sortMethod === 'newest' ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-white'}`}
+                >
+                    {t.upvote.sortNew}
+                </button>
+                <button 
+                    onClick={() => setSortMethod('upvotes')}
+                    className={`px-3 py-1 text-xs uppercase font-bold rounded transition-colors ${sortMethod === 'upvotes' ? 'bg-neon-green text-black' : 'text-gray-500 hover:text-white'}`}
+                >
+                    {t.upvote.sortPopular}
+                </button>
+            </div>
+        </div>
+
         <div className="text-right">
           <h2 className="text-neon-blue text-xl font-bold uppercase">{selectedIndustry?.id === 'custom' ? t.industries['custom'] : (selectedIndustry ? t.industries[selectedIndustry.id] : '')}</h2>
           <p className="text-xs text-gray-500">{t.scanComplete(ideas.length)}</p>
@@ -822,10 +1023,15 @@ const App: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
-        {ideas.map((idea, idx) => {
+        {sortedIdeas.map((idea, idx) => {
           const isSaved = savedIdeas.some(i => i.businessTitle === idea.businessTitle || i.id === idea.id);
+          // Use a unique key based on idea data to ensure React reorders properly
+          // idx is bad because it doesn't change when order changes
+          // idea.id is best if unique, otherwise hash the title
+          const uniqueKey = idea.id || `${idea.businessTitle.replace(/\s+/g, '')}-${idx}`;
+          
           return (
-            <NeonCard key={idx} color="pink" className="flex flex-col h-full" hoverEffect={false}>
+            <NeonCard key={uniqueKey} color="pink" className="flex flex-col h-full" hoverEffect={false}>
               <div className="relative h-48 mb-4 rounded-lg overflow-hidden border border-gray-800">
                 <img 
                   src={idea.imageUrl || `https://picsum.photos/400/300?random=${idx}`}
@@ -838,6 +1044,24 @@ const App: React.FC = () => {
                 />
                 <div className="absolute top-2 right-2 bg-black/80 text-neon-pink text-xs font-bold px-2 py-1 rounded border border-neon-pink">
                   {idea.platformSource}
+                </div>
+                
+                {/* Upvote Badge Overlay */}
+                <div className="absolute top-2 left-2">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); handleUpvote(idea); }}
+                        className={`
+                            flex flex-col items-center justify-center w-10 h-10 rounded border 
+                            backdrop-blur-md transition-all active:scale-95
+                            ${idea.isUpvoted 
+                                ? 'bg-neon-green/20 border-neon-green text-neon-green' 
+                                : 'bg-black/60 border-gray-600 text-gray-400 hover:border-white hover:text-white'}
+                        `}
+                        title={t.upvote.tooltip}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7" /></svg>
+                        <span className="text-[10px] font-bold leading-none">{idea.upvotes || 0}</span>
+                    </button>
                 </div>
               </div>
 
@@ -905,314 +1129,637 @@ const App: React.FC = () => {
       </div>
       
     </div>
-  );
+  )};
 
-  const renderBusinessCanvas = () => {
+  const renderCanvasView = () => {
     if (!canvas || !selectedIdea) return null;
 
-    const CanvasBlock = ({ title, items, color = 'blue', className = '' }: { title: string, items: string[], color?: 'blue'|'pink'|'green'|'purple', className?: string }) => (
-      <div className={`bg-dark-card border border-gray-800 p-4 h-full flex flex-col hover:border-neon-${color} transition-colors duration-300 ${className}`}>
-        <h4 className={`text-neon-${color} font-bold uppercase tracking-widest text-sm mb-4 border-b border-gray-800 pb-2`}>
-          {title}
-        </h4>
-        <ul className="space-y-2 overflow-y-auto custom-scrollbar flex-grow">
-          {items.map((item, i) => (
-            <li key={i} className="text-sm text-gray-300 flex items-start">
-              <span className={`inline-block w-1.5 h-1.5 rounded-full bg-neon-${color} mt-1.5 mr-2 flex-shrink-0`}></span>
-              {item}
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-
     return (
-      <div className="container mx-auto px-4 py-8 h-screen flex flex-col">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 shrink-0">
-          <div className="flex items-center gap-4 mb-4 md:mb-0">
-              <button onClick={goBackToIdeas} className="flex items-center text-gray-400 hover:text-white transition-colors">
-                <ArrowLeftIcon />
-                <span className="ml-2 uppercase tracking-widest">{t.backToIdeas}</span>
-              </button>
-              
-              <NeonButton color="purple" onClick={saveCanvasToLocal} className="text-xs py-2 px-3">
-                  {t.saveCanvasLocal}
-              </NeonButton>
-
-              <NeonButton 
-                  color="blue" 
-                  onClick={downloadCanvasAsPDF} 
-                  className="text-xs py-2 px-3 flex items-center gap-2"
-                  disabled={isDownloadingPdf}
-              >
-                  {isDownloadingPdf ? (
-                      <>
-                          <div className="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                          {t.downloading}
-                      </>
-                  ) : (
-                      <>
+    <div className="container mx-auto px-4 py-8 max-w-7xl animate-[fadeIn_0.5s_ease-out]">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6">
+        <div className="flex gap-4 items-center">
+            <button onClick={goBackToIdeas} className="flex items-center text-gray-400 hover:text-white transition-colors">
+            <ArrowLeftIcon />
+            <span className="ml-2 uppercase tracking-widest">{t.backToIdeas}</span>
+            </button>
+        </div>
+        <div className="text-center my-4 md:my-0">
+          <h2 className="text-2xl font-bold text-white uppercase">{selectedIdea.businessTitle}</h2>
+          <p className="text-neon-blue font-mono">BUSINESS MODEL CANVAS</p>
+        </div>
+        <div className="flex gap-4">
+             <NeonButton 
+                color="green" 
+                onClick={saveCanvasToLocal}
+                className="text-xs"
+             >
+                {t.saveCanvasLocal}
+             </NeonButton>
+             <NeonButton 
+                color="purple" 
+                onClick={downloadCanvasAsPDF}
+                disabled={isDownloadingPdf}
+                className="text-xs flex items-center gap-2"
+             >
+                {isDownloadingPdf ? (
+                    <>
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        {t.downloading}
+                    </>
+                ) : (
+                    <>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                         {t.downloadPdf}
-                      </>
-                  )}
-              </NeonButton>
-          </div>
-          <div className="text-right">
-            <h2 className="text-3xl font-bold text-white">{selectedIdea.businessTitle}</h2>
-            <p className="text-neon-blue font-mono">{selectedIdea.machineName}</p>
-          </div>
-        </div>
-
-        {/* Canvas Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 flex-grow min-h-0 overflow-y-auto pb-8">
-          {/* Left Col */}
-          <div className="grid grid-rows-2 gap-4 md:col-span-1">
-             <CanvasBlock title={t.canvasSections.keyPartners} items={canvas.keyPartners} color="purple" />
-             <CanvasBlock title={t.canvasSections.costStructure} items={canvas.costStructure} color="pink" />
-          </div>
-          {/* Left-Mid Col */}
-          <div className="grid grid-rows-2 gap-4 md:col-span-1">
-             <CanvasBlock title={t.canvasSections.keyActivities} items={canvas.keyActivities} color="blue" />
-             <CanvasBlock title={t.canvasSections.keyResources} items={canvas.keyResources} color="blue" />
-          </div>
-          {/* Center Col */}
-          <div className="md:col-span-1">
-             <CanvasBlock title={t.canvasSections.valuePropositions} items={canvas.valuePropositions} color="green" className="h-full border-neon-green shadow-neon-green border-opacity-30" />
-          </div>
-          {/* Right-Mid Col */}
-          <div className="grid grid-rows-2 gap-4 md:col-span-1">
-             <CanvasBlock title={t.canvasSections.customerRelationships} items={canvas.customerRelationships} color="blue" />
-             <CanvasBlock title={t.canvasSections.channels} items={canvas.channels} color="blue" />
-          </div>
-           {/* Right Col */}
-           <div className="grid grid-rows-2 gap-4 md:col-span-1">
-             <CanvasBlock title={t.canvasSections.customerSegments} items={canvas.customerSegments} color="purple" />
-             <CanvasBlock title={t.canvasSections.revenueStreams} items={canvas.revenueStreams} color="pink" />
-          </div>
-        </div>
-
-        {/* Hidden Print View for PDF Generation - Optimized for A4 Landscape */}
-        <div 
-            id="canvas-pdf-export" 
-            className="fixed top-0 left-[-9999px] bg-dark-bg p-8 text-white w-[1122px] h-auto min-h-[793px]"
-            style={{ 
-                fontFamily: "'Rajdhani', sans-serif",
-                background: '#050505'
-            }}
-        >
-            {/* Header / Summary */}
-            <div className="mb-6 border-b border-gray-800 pb-4">
-                <div className="flex justify-between items-start mb-4">
-                     <div>
-                        <h1 className="text-4xl font-bold text-white mb-2 font-orbitron">{selectedIdea.businessTitle}</h1>
-                        <h2 className="text-2xl text-neon-blue font-mono">{selectedIdea.machineName}</h2>
-                     </div>
-                     <div className="text-right opacity-50">
-                         <div className="text-sm">GENERATED BY NEON VENTURES</div>
-                         <div className="text-xs font-mono">{new Date().toLocaleDateString()}</div>
-                     </div>
-                </div>
-                <div className="bg-dark-card border border-gray-800 p-4 rounded-lg">
-                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-widest mb-1">Business Summary</h3>
-                    <p className="text-gray-300">{selectedIdea.description}</p>
-                </div>
-            </div>
-
-            {/* Canvas Grid - Fixed Aspect Ratio for Print */}
-            <div className="grid grid-cols-5 gap-4 h-[600px]">
-                {/* Left Col */}
-                <div className="grid grid-rows-2 gap-4 col-span-1">
-                    <CanvasBlock title={t.canvasSections.keyPartners} items={canvas.keyPartners} color="purple" className="overflow-visible" />
-                    <CanvasBlock title={t.canvasSections.costStructure} items={canvas.costStructure} color="pink" className="overflow-visible" />
-                </div>
-                {/* Left-Mid Col */}
-                <div className="grid grid-rows-2 gap-4 col-span-1">
-                    <CanvasBlock title={t.canvasSections.keyActivities} items={canvas.keyActivities} color="blue" className="overflow-visible" />
-                    <CanvasBlock title={t.canvasSections.keyResources} items={canvas.keyResources} color="blue" className="overflow-visible" />
-                </div>
-                {/* Center Col */}
-                <div className="col-span-1">
-                    <CanvasBlock title={t.canvasSections.valuePropositions} items={canvas.valuePropositions} color="green" className="h-full border-neon-green overflow-visible" />
-                </div>
-                {/* Right-Mid Col */}
-                <div className="grid grid-rows-2 gap-4 col-span-1">
-                    <CanvasBlock title={t.canvasSections.customerRelationships} items={canvas.customerRelationships} color="blue" className="overflow-visible" />
-                    <CanvasBlock title={t.canvasSections.channels} items={canvas.channels} color="blue" className="overflow-visible" />
-                </div>
-                {/* Right Col */}
-                <div className="grid grid-rows-2 gap-4 col-span-1">
-                    <CanvasBlock title={t.canvasSections.customerSegments} items={canvas.customerSegments} color="purple" className="overflow-visible" />
-                    <CanvasBlock title={t.canvasSections.revenueStreams} items={canvas.revenueStreams} color="pink" className="overflow-visible" />
-                </div>
-            </div>
+                    </>
+                )}
+             </NeonButton>
         </div>
       </div>
-    );
-  };
+
+      <div id="canvas-pdf-export" className="bg-dark-card border border-neon-blue rounded-xl p-4 shadow-[0_0_30px_rgba(0,212,255,0.1)]">
+        {/* Top Row: Key Partners, Activities, Resources, Value Prop, Customer Rel, Channels, Segments */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 min-h-[600px]">
+          
+          {/* Left Block (Partners) */}
+          <div className="lg:col-span-1 border border-gray-700 bg-black/40 p-4 rounded-lg flex flex-col">
+            <h3 className="text-neon-pink font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.keyPartners}</h3>
+            <ul className="list-disc list-inside text-gray-300 text-sm space-y-2 flex-grow">
+              {canvas.keyPartners.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+
+          {/* Left-Mid Block (Activities & Resources) */}
+          <div className="lg:col-span-1 flex flex-col gap-4">
+            <div className="border border-gray-700 bg-black/40 p-4 rounded-lg flex-grow">
+              <h3 className="text-neon-green font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.keyActivities}</h3>
+              <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+                {canvas.keyActivities.map((item, i) => <li key={i}>{item}</li>)}
+              </ul>
+            </div>
+            <div className="border border-gray-700 bg-black/40 p-4 rounded-lg flex-grow">
+              <h3 className="text-neon-green font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.keyResources}</h3>
+              <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+                {canvas.keyResources.map((item, i) => <li key={i}>{item}</li>)}
+              </ul>
+            </div>
+          </div>
+
+          {/* Center Block (Value Propositions) */}
+          <div className="lg:col-span-1 border border-neon-blue bg-neon-blue/5 p-4 rounded-lg flex flex-col">
+            <h3 className="text-white font-bold uppercase mb-4 text-sm tracking-wider flex items-center gap-2">
+               <span className="text-2xl">🎁</span> {t.canvasSections.valuePropositions}
+            </h3>
+            <ul className="list-disc list-inside text-white text-sm space-y-3 flex-grow font-medium">
+              {canvas.valuePropositions.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+
+          {/* Right-Mid Block (Relationships & Channels) */}
+          <div className="lg:col-span-1 flex flex-col gap-4">
+            <div className="border border-gray-700 bg-black/40 p-4 rounded-lg flex-grow">
+              <h3 className="text-neon-purple font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.customerRelationships}</h3>
+              <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+                {canvas.customerRelationships.map((item, i) => <li key={i}>{item}</li>)}
+              </ul>
+            </div>
+            <div className="border border-gray-700 bg-black/40 p-4 rounded-lg flex-grow">
+              <h3 className="text-neon-purple font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.channels}</h3>
+              <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+                {canvas.channels.map((item, i) => <li key={i}>{item}</li>)}
+              </ul>
+            </div>
+          </div>
+
+          {/* Right Block (Customer Segments) */}
+          <div className="lg:col-span-1 border border-gray-700 bg-black/40 p-4 rounded-lg flex flex-col">
+            <h3 className="text-neon-yellow font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.customerSegments}</h3>
+            <ul className="list-disc list-inside text-gray-300 text-sm space-y-2 flex-grow">
+              {canvas.customerSegments.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+
+        </div>
+
+        {/* Bottom Row: Cost & Revenue */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+          <div className="border border-red-900/50 bg-red-900/10 p-4 rounded-lg">
+            <h3 className="text-red-400 font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.costStructure}</h3>
+            <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+              {canvas.costStructure.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+          <div className="border border-green-900/50 bg-green-900/10 p-4 rounded-lg">
+            <h3 className="text-green-400 font-bold uppercase mb-4 text-sm tracking-wider">{t.canvasSections.revenueStreams}</h3>
+            <ul className="list-disc list-inside text-gray-300 text-sm space-y-2">
+              {canvas.revenueStreams.map((item, i) => <li key={i}>{item}</li>)}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  )};
+  
+  const renderDetailModal = () => (
+    <NeonModal 
+      isOpen={!!detailIdea} 
+      onClose={closeDetails} 
+      title={detailIdea?.businessTitle}
+    >
+      {loadingDetails ? (
+        <div className="p-12 text-center">
+            <div className="w-12 h-12 border-4 border-neon-blue border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-neon-blue animate-pulse">{t.loading.details}</p>
+        </div>
+      ) : businessDetails && detailIdea ? (
+        <div className="space-y-6">
+            
+            {/* Tabs */}
+            <div className="flex border-b border-gray-700 mb-4 overflow-x-auto">
+                <button 
+                    onClick={() => setActiveDetailTab('blueprint')}
+                    className={`px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeDetailTab === 'blueprint' ? 'text-neon-blue border-b-2 border-neon-blue' : 'text-gray-500 hover:text-white'}`}
+                >
+                    {t.stressTest.blueprintTab}
+                </button>
+                <button 
+                    onClick={() => { setActiveDetailTab('stress_test'); handleRunStressTest(); }}
+                    className={`px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeDetailTab === 'stress_test' ? 'text-neon-pink border-b-2 border-neon-pink' : 'text-gray-500 hover:text-white'}`}
+                >
+                    {t.stressTest.tabTitle}
+                </button>
+                <button 
+                    onClick={() => { setActiveDetailTab('roi'); handleLoadFinancials(); }}
+                    className={`px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeDetailTab === 'roi' ? 'text-neon-green border-b-2 border-neon-green' : 'text-gray-500 hover:text-white'}`}
+                >
+                    {t.roi.tabTitle}
+                </button>
+                <button 
+                    onClick={() => { setActiveDetailTab('roadmap'); handleLoadRoadmap(); }}
+                    className={`px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeDetailTab === 'roadmap' ? 'text-neon-purple border-b-2 border-neon-purple' : 'text-gray-500 hover:text-white'}`}
+                >
+                    {t.roadmap.tabTitle}
+                </button>
+                <button 
+                    onClick={() => { setActiveDetailTab('supplier'); handleLoadSourcing(); }}
+                    className={`px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeDetailTab === 'supplier' ? 'text-neon-yellow border-b-2 border-neon-yellow' : 'text-gray-500 hover:text-white'}`}
+                >
+                    {t.supplier.tabTitle}
+                </button>
+            </div>
+
+            {/* TAB CONTENT: BLUEPRINT */}
+            {activeDetailTab === 'blueprint' && (
+                <div className="animate-[fadeIn_0.3s_ease-out]">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-neon-pink font-bold uppercase mb-2 text-sm">{t.detailsSections.audience}</h4>
+                      <p className="text-gray-300 text-sm mb-4">{businessDetails.targetAudience}</p>
+                      
+                      <h4 className="text-neon-green font-bold uppercase mb-2 text-sm">{t.detailsSections.marketing}</h4>
+                      <p className="text-gray-300 text-sm italic border-l-2 border-neon-green pl-3">{businessDetails.marketingQuickTip}</p>
+                    </div>
+                    <div>
+                      <h4 className="text-white font-bold uppercase mb-2 text-sm">{t.detailsSections.requirements}</h4>
+                      <ul className="list-disc list-inside text-gray-300 text-sm space-y-1 mb-4">
+                        {businessDetails.operationalRequirements.map((req, i) => <li key={i}>{req}</li>)}
+                      </ul>
+
+                      <h4 className="text-white font-bold uppercase mb-2 text-sm">{t.detailsSections.skillRequirements}</h4>
+                      <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
+                        {businessDetails.skillRequirements.map((skill, i) => <li key={i}>{skill}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-gray-800">
+                     <div>
+                        <h4 className="text-neon-blue font-bold uppercase mb-2 text-sm">{t.detailsSections.pros}</h4>
+                        <ul className="space-y-1">
+                           {businessDetails.pros.map((pro, i) => (
+                             <li key={i} className="flex items-start text-sm text-gray-300">
+                               <span className="text-neon-blue mr-2">✓</span> {pro}
+                             </li>
+                           ))}
+                        </ul>
+                     </div>
+                     <div>
+                        <h4 className="text-red-400 font-bold uppercase mb-2 text-sm">{t.detailsSections.cons}</h4>
+                        <ul className="space-y-1">
+                           {businessDetails.cons.map((con, i) => (
+                             <li key={i} className="flex items-start text-sm text-gray-300">
+                               <span className="text-red-400 mr-2">⚠</span> {con}
+                             </li>
+                           ))}
+                        </ul>
+                     </div>
+                  </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: STRESS TEST */}
+            {activeDetailTab === 'stress_test' && (
+                <div className="animate-[fadeIn_0.3s_ease-out]">
+                    {!stressTestResult ? (
+                         loadingStressTest ? (
+                            <div className="p-8 text-center">
+                                <div className="w-8 h-8 border-2 border-neon-pink border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                <p className="text-neon-pink animate-pulse">{t.loading.stressTest}</p>
+                            </div>
+                         ) : (
+                             <div className="text-center py-8">
+                                <NeonButton onClick={handleRunStressTest} color="pink">{t.stressTest.runSimBtn}</NeonButton>
+                             </div>
+                         )
+                    ) : (
+                        <div className="space-y-6">
+                            <div className="bg-red-900/10 border border-red-900/50 p-4 rounded-lg">
+                                <h4 className="text-red-500 font-bold uppercase mb-1 text-xs tracking-widest">{t.stressTest.failureMode}</h4>
+                                <p className="text-white text-lg font-bold">{stressTestResult.failureMode}</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h4 className="text-gray-400 font-bold uppercase mb-2 text-xs tracking-widest">{t.stressTest.saturation}</h4>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <div className={`h-2 flex-grow rounded-full ${
+                                            stressTestResult.saturationLevel === 'High' ? 'bg-red-500' :
+                                            stressTestResult.saturationLevel === 'Medium' ? 'bg-yellow-500' : 'bg-green-500'
+                                        }`}></div>
+                                        <span className="text-white font-bold">{stressTestResult.saturationLevel}</span>
+                                    </div>
+                                    <p className="text-xs text-gray-500">{stressTestResult.saturationReason}</p>
+                                </div>
+                                <div>
+                                    <h4 className="text-gray-400 font-bold uppercase mb-2 text-xs tracking-widest">{t.stressTest.competitorEdge}</h4>
+                                    <p className="text-neon-blue text-sm">{stressTestResult.competitorEdge}</p>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <h4 className="text-gray-400 font-bold uppercase mb-2 text-xs tracking-widest">{t.stressTest.hiddenCosts}</h4>
+                                <ul className="list-disc list-inside text-sm text-gray-300">
+                                    {stressTestResult.hiddenCosts.map((cost, i) => <li key={i}>{cost}</li>)}
+                                </ul>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            {/* TAB CONTENT: ROI CALCULATOR */}
+            {activeDetailTab === 'roi' && (
+                <div className="animate-[fadeIn_0.3s_ease-out]">
+                    {!financials ? (
+                         loadingFinancials ? (
+                            <div className="p-8 text-center">
+                                <div className="w-8 h-8 border-2 border-neon-green border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                <p className="text-neon-green animate-pulse">{t.loading.financials}</p>
+                            </div>
+                         ) : (
+                             <div className="text-center py-8">
+                                <NeonButton onClick={handleLoadFinancials} color="green">{t.roi.aiEstimateBtn}</NeonButton>
+                             </div>
+                         )
+                    ) : (
+                        <div className="space-y-6">
+                            {/* Inputs Section */}
+                            <div>
+                                <h4 className="text-gray-500 text-xs font-bold uppercase mb-4 border-b border-gray-800 pb-1">{t.roi.inputsTitle}</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-[10px] text-gray-400 uppercase">{t.roi.labels.investment}</label>
+                                        <input 
+                                            type="number" 
+                                            value={financials.initialInvestment} 
+                                            onChange={(e) => setFinancials({...financials, initialInvestment: Number(e.target.value)})}
+                                            className="w-full bg-black/30 border border-gray-700 rounded p-2 text-white text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-gray-400 uppercase">{t.roi.labels.fixedCost}</label>
+                                        <input 
+                                            type="number" 
+                                            value={financials.monthlyFixedCosts} 
+                                            onChange={(e) => setFinancials({...financials, monthlyFixedCosts: Number(e.target.value)})}
+                                            className="w-full bg-black/30 border border-gray-700 rounded p-2 text-white text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-gray-400 uppercase">{t.roi.labels.costPerUnit}</label>
+                                        <input 
+                                            type="number" 
+                                            value={financials.costPerUnit} 
+                                            onChange={(e) => setFinancials({...financials, costPerUnit: Number(e.target.value)})}
+                                            className="w-full bg-black/30 border border-gray-700 rounded p-2 text-white text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-gray-400 uppercase">{t.roi.labels.pricePerUnit}</label>
+                                        <input 
+                                            type="number" 
+                                            value={financials.pricePerUnit} 
+                                            onChange={(e) => setFinancials({...financials, pricePerUnit: Number(e.target.value)})}
+                                            className="w-full bg-black/30 border border-gray-700 rounded p-2 text-white text-sm"
+                                        />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="text-[10px] text-gray-400 uppercase">{t.roi.labels.estSales}</label>
+                                        <input 
+                                            type="range" 
+                                            min="0" 
+                                            max="1000" 
+                                            value={financials.estimatedMonthlySales} 
+                                            onChange={(e) => setFinancials({...financials, estimatedMonthlySales: Number(e.target.value)})}
+                                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                                        />
+                                        <div className="text-right text-neon-green font-bold text-sm">{financials.estimatedMonthlySales} {t.roi.metrics.units}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Results Section */}
+                            {metrics && (
+                                <div className="bg-neon-green/10 border border-neon-green/30 p-4 rounded-lg">
+                                    <h4 className="text-neon-green text-xs font-bold uppercase mb-4 border-b border-neon-green/30 pb-1">{t.roi.resultsTitle}</h4>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="text-center p-2 bg-black/20 rounded">
+                                            <div className="text-xs text-gray-400 uppercase">{t.roi.metrics.margin}</div>
+                                            <div className="text-white font-bold">{financials.currency}{metrics.margin.toFixed(2)}</div>
+                                        </div>
+                                        <div className="text-center p-2 bg-black/20 rounded">
+                                            <div className="text-xs text-gray-400 uppercase">{t.roi.metrics.monthlyProfit}</div>
+                                            <div className={`font-bold ${metrics.monthlyProfit >= 0 ? 'text-neon-green' : 'text-red-500'}`}>
+                                                {financials.currency}{metrics.monthlyProfit.toFixed(2)}
+                                            </div>
+                                        </div>
+                                        <div className="text-center p-2 bg-black/20 rounded">
+                                            <div className="text-xs text-gray-400 uppercase">{t.roi.metrics.breakEven}</div>
+                                            <div className="text-white font-bold">{metrics.breakEvenUnits === Infinity ? '∞' : metrics.breakEvenUnits} {t.roi.metrics.units}</div>
+                                        </div>
+                                        <div className="text-center p-2 bg-black/20 rounded">
+                                            <div className="text-xs text-gray-400 uppercase">{t.roi.metrics.breakEvenTime}</div>
+                                            <div className="text-white font-bold">{metrics.breakEvenMonths === Infinity ? '∞' : metrics.breakEvenMonths} {t.roi.metrics.months}</div>
+                                        </div>
+                                    </div>
+                                    <div className="mt-2 text-[9px] text-center text-gray-500 uppercase">{t.roi.disclaimer}</div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            {/* TAB CONTENT: ROADMAP */}
+            {activeDetailTab === 'roadmap' && (
+                <div className="animate-[fadeIn_0.3s_ease-out]">
+                    {!roadmap ? (
+                         loadingRoadmap ? (
+                            <div className="p-8 text-center">
+                                <div className="w-8 h-8 border-2 border-neon-purple border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                <p className="text-neon-purple animate-pulse">{t.loading.roadmap}</p>
+                            </div>
+                         ) : (
+                             <div className="text-center py-8">
+                                <NeonButton onClick={handleLoadRoadmap} color="purple">{t.roadmap.genBtn}</NeonButton>
+                             </div>
+                         )
+                    ) : (
+                        <div className="relative border-l-2 border-gray-800 ml-4 space-y-8 py-2">
+                             {roadmap.map((phase, idx) => (
+                                 <div key={idx} className="relative pl-8">
+                                     <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-neon-purple shadow-[0_0_10px_#bc13fe]"></div>
+                                     <h4 className="text-neon-purple font-bold uppercase text-sm mb-1">{t.roadmap.phase} {idx + 1}: {phase.phaseName}</h4>
+                                     <div className="text-xs text-gray-500 font-mono mb-2 uppercase tracking-widest">{phase.duration}</div>
+                                     <ul className="space-y-2">
+                                         {phase.steps.map((step, sIdx) => (
+                                             <li key={sIdx} className="text-sm text-gray-300 bg-gray-900/50 p-2 rounded border-l-2 border-gray-700">
+                                                 {step}
+                                             </li>
+                                         ))}
+                                     </ul>
+                                 </div>
+                             ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* TAB CONTENT: SUPPLIER OUTREACH */}
+            {activeDetailTab === 'supplier' && (
+                <div className="animate-[fadeIn_0.3s_ease-out] space-y-6">
+                    {/* Verified Links Section */}
+                    <div>
+                        <h4 className="text-neon-yellow font-bold uppercase mb-4 text-xs tracking-widest border-b border-gray-800 pb-1">
+                            {t.supplier.verifiedSources}
+                        </h4>
+                        
+                        {loadingSourcing ? (
+                            <div className="py-8 text-center">
+                                <div className="w-6 h-6 border-2 border-neon-yellow border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                <p className="text-neon-yellow text-xs animate-pulse">{t.loading.sourcing}</p>
+                            </div>
+                        ) : sourcingLinks && sourcingLinks.length > 0 ? (
+                            <div className="grid grid-cols-1 gap-2">
+                                {sourcingLinks.map((link, idx) => (
+                                    <a 
+                                        key={idx} 
+                                        href={link.url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="flex justify-between items-center bg-black/40 border border-gray-700 hover:border-neon-yellow p-3 rounded transition-colors group"
+                                    >
+                                        <div className="truncate pr-4">
+                                            <div className="text-white font-bold text-sm truncate">{link.title}</div>
+                                            <div className="text-xs text-gray-500 uppercase">{link.source}</div>
+                                        </div>
+                                        <div className="text-neon-yellow group-hover:translate-x-1 transition-transform">
+                                            ↗
+                                        </div>
+                                    </a>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-gray-500 text-sm italic py-4 text-center border border-dashed border-gray-800 rounded">
+                                {t.supplier.noLinks}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="bg-neon-yellow/10 border border-neon-yellow/30 p-4 rounded-lg text-center mt-6">
+                        <p className="text-sm text-gray-300 mb-4">{t.supplier.intro}</p>
+                        <button 
+                            onClick={() => openSearch(detailIdea.platformSource, detailIdea.machineName)}
+                            className="bg-neon-yellow text-black font-bold uppercase text-sm px-6 py-3 rounded-lg hover:bg-white hover:scale-105 transition-all shadow-[0_0_15px_#f9f871]"
+                        >
+                            {t.supplier.findBtn(detailIdea.platformSource)} 
+                            <span className="ml-2">↗</span>
+                        </button>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Subject Line</label>
+                                <button 
+                                    onClick={() => copyToClipboard(t.supplier.template.subject(detailIdea.machineName))}
+                                    className="text-xs text-neon-blue hover:text-white uppercase font-bold"
+                                >
+                                    {t.supplier.copySubjectBtn}
+                                </button>
+                            </div>
+                            <div className="bg-black/40 border border-gray-700 rounded p-3 text-sm text-white font-mono select-all">
+                                {t.supplier.template.subject(detailIdea.machineName)}
+                            </div>
+                        </div>
+
+                        <div>
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Message Body</label>
+                                <button 
+                                    onClick={() => copyToClipboard(t.supplier.template.body(detailIdea.platformSource, detailIdea.machineName, currentUser?.name || "Global Buyer"))}
+                                    className="text-xs text-neon-blue hover:text-white uppercase font-bold"
+                                >
+                                    {t.supplier.copyBodyBtn}
+                                </button>
+                            </div>
+                            <div className="bg-black/40 border border-gray-700 rounded p-3 text-sm text-gray-300 font-mono whitespace-pre-wrap select-all h-64 overflow-y-auto custom-scrollbar">
+                                {t.supplier.template.body(detailIdea.platformSource, detailIdea.machineName, currentUser?.name || "Global Buyer")}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            <div className="mt-8 pt-4 border-t border-gray-800 flex justify-end">
+               <button onClick={closeDetails} className="text-gray-400 hover:text-white text-sm font-bold uppercase tracking-widest px-4 py-2">
+                   {t.closeBtn}
+               </button>
+            </div>
+        </div>
+      ) : null}
+    </NeonModal>
+  );
 
   if (loadingSession) {
     return (
-       <div className="min-h-screen bg-dark-bg flex items-center justify-center">
-          <LoadingScan text="Initializing Connection..." />
-       </div>
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <LoadingScan text="INITIALIZING SYSTEM..." />
+      </div>
     );
   }
 
+  // Auth Screen
+  if (appState === AppState.LOGIN) {
+    return <Auth t={t} error={error} onGuestLogin={handleGuestLogin} />;
+  }
+
+  // Dashboard Screen
+  if (appState === AppState.DASHBOARD && currentUser) {
+      return (
+        <div className="min-h-screen bg-black text-white font-sans selection:bg-neon-pink selection:text-white">
+           {renderNavBar()}
+           <UserDashboard 
+              user={currentUser} 
+              savedIdeas={savedIdeas}
+              recommendedIdeas={recommendedIdeas}
+              onViewIdea={handleViewDetails}
+              onGenerateRecommendations={handleGenerateRecommendations}
+              isGeneratingRecs={isGeneratingRecs}
+              t={t}
+           />
+           {renderDetailModal()}
+           <ChatWidget 
+              appState={appState} 
+              selectedIndustry={selectedIndustry} 
+              selectedIdea={selectedIdea || detailIdea} 
+              currentUser={currentUser}
+              t={t}
+              language={language}
+           />
+        </div>
+      )
+  }
+
+  // Admin Dashboard Screen
+  if (appState === AppState.ADMIN_DASHBOARD && currentUser && currentUser.role === 'admin') {
+      return (
+        <div className="min-h-screen bg-black text-white font-sans selection:bg-neon-pink selection:text-white">
+           {renderNavBar()}
+           <AdminDashboard 
+              user={currentUser} 
+              onAddIdea={handleAdminAddIdea}
+              t={t}
+           />
+        </div>
+      )
+  }
+
+  // Community Screen
+  if (appState === AppState.COMMUNITY && currentUser) {
+      return (
+        <div className="min-h-screen bg-black text-white font-sans selection:bg-neon-pink selection:text-white">
+           {renderNavBar()}
+           <Community 
+              user={currentUser} 
+              posts={communityPosts}
+              onAddPost={handleAddPost}
+              onLikePost={handleLikePost}
+              t={t}
+           />
+           <ChatWidget 
+              appState={appState} 
+              selectedIndustry={null} 
+              selectedIdea={null} 
+              currentUser={currentUser}
+              t={t}
+              language={language}
+           />
+        </div>
+      )
+  }
+
+  // About Screen
+  if (appState === AppState.ABOUT) {
+      return (
+        <div className="min-h-screen bg-black text-white font-sans selection:bg-neon-pink selection:text-white">
+           {renderNavBar()}
+           <About t={t} onBack={() => currentUser ? setAppState(AppState.SELECT_INDUSTRY) : setAppState(AppState.LOGIN)} />
+        </div>
+      )
+  }
+
+  // Main App Flow
   return (
-    <div className="min-h-screen bg-dark-bg text-gray-200 selection:bg-neon-pink selection:text-white relative overflow-x-hidden">
-      {/* Background Ambience */}
-      <div className="fixed top-0 left-0 w-full h-full pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-neon-blue rounded-full opacity-5 blur-[120px]"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-neon-purple rounded-full opacity-5 blur-[120px]"></div>
-      </div>
+    <div className="min-h-screen bg-black text-white font-sans selection:bg-neon-pink selection:text-white overflow-x-hidden">
+      {renderNavBar()}
 
-      <div className="relative z-10 flex flex-col min-h-screen">
-        
-        {renderNavBar()}
+      {appState === AppState.SELECT_INDUSTRY && renderIndustrySelection()}
+      
+      {appState === AppState.USER_PROFILE && renderUserProfile()}
 
-        <main className="flex-grow">
-          {appState === AppState.LOGIN && (
-              <Auth t={t} onGuestLogin={handleGuestLogin} />
-          )}
+      {appState === AppState.LOADING_PROFILE_IDEAS && <LoadingScan text={t.loading.profile} />}
 
-          {appState === AppState.ABOUT && (
-              <About t={t} onBack={() => currentUser ? setAppState(AppState.SELECT_INDUSTRY) : setAppState(AppState.LOGIN)} />
-          )}
+      {appState === AppState.LOADING_IDEAS && <LoadingScan text={t.loading.scanning(selectedIndustry?.name || '')} />}
+      
+      {appState === AppState.SELECT_IDEA && renderIdeaSelection()}
+      
+      {appState === AppState.LOADING_CANVAS && <LoadingScan text={t.loading.canvas} />}
+      
+      {appState === AppState.VIEW_CANVAS && renderCanvasView()}
 
-          {appState === AppState.DASHBOARD && currentUser && (
-             <UserDashboard 
-                 user={currentUser} 
-                 savedIdeas={savedIdeas} 
-                 recommendedIdeas={recommendedIdeas}
-                 onViewIdea={handleViewDetails} 
-                 onGenerateRecommendations={handleGenerateRecommendations}
-                 isGeneratingRecs={isGeneratingRecs}
-                 t={t} 
-             />
-          )}
+      {/* Detail Modal (available in multiple states if triggered) */}
+      {renderDetailModal()}
 
-          {appState === AppState.COMMUNITY && currentUser && (
-              <Community 
-                 user={currentUser}
-                 posts={communityPosts}
-                 onAddPost={handleAddPost}
-                 onLikePost={handleLikePost}
-                 t={t}
-              />
-          )}
+      {/* Global Chat Widget */}
+      <ChatWidget 
+         appState={appState} 
+         selectedIndustry={selectedIndustry} 
+         selectedIdea={selectedIdea || detailIdea} 
+         currentUser={currentUser}
+         t={t}
+         language={language}
+      />
 
-          {appState === AppState.ADMIN_DASHBOARD && currentUser && currentUser.role === 'admin' && (
-             <AdminDashboard user={currentUser} onAddIdea={handleAdminAddIdea} t={t} />
-          )}
-
-          {appState === AppState.SELECT_INDUSTRY && renderIndustrySelection()}
-          
-          {appState === AppState.USER_PROFILE && renderUserProfile()}
-
-          {(appState === AppState.LOADING_IDEAS || appState === AppState.LOADING_PROFILE_IDEAS) && (
-            <LoadingScan text={
-              appState === AppState.LOADING_PROFILE_IDEAS 
-              ? t.loading.profile 
-              : t.loading.scanning(selectedIndustry ? (t.industries[selectedIndustry.id] || selectedIndustry.name) : '')
-            } />
-          )}
-          
-          {appState === AppState.SELECT_IDEA && renderIdeaSelection()}
-          
-          {appState === AppState.LOADING_CANVAS && (
-            <LoadingScan text={t.loading.canvas} />
-          )}
-          
-          {appState === AppState.VIEW_CANVAS && renderBusinessCanvas()}
-
-          {/* Global Details Modal */}
-          <NeonModal 
-            isOpen={!!detailIdea} 
-            onClose={closeDetails} 
-            title={detailIdea?.businessTitle}
-          >
-            {loadingDetails ? (
-               <div className="py-12">
-                 <LoadingScan text={t.loading.details} />
-               </div>
-            ) : businessDetails ? (
-               <div className="space-y-6">
-                  <div>
-                    <h4 className="text-neon-blue font-bold uppercase mb-2 text-sm">{t.detailsSections.audience}</h4>
-                    <p className="text-gray-300">{businessDetails.targetAudience}</p>
-                  </div>
-                  
-                  {/* Updated Layout for Requirements and Skills */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <h4 className="text-neon-purple font-bold uppercase mb-2 text-sm">{t.detailsSections.requirements}</h4>
-                        <ul className="list-disc list-inside text-gray-300 space-y-1">
-                          {businessDetails.operationalRequirements && businessDetails.operationalRequirements.length > 0 ? (
-                             businessDetails.operationalRequirements.map((r, i) => <li key={i}>{r}</li>)
-                          ) : (
-                             <li className="italic text-gray-500">None specified</li>
-                          )}
-                        </ul>
-                      </div>
-                      <div>
-                        <h4 className="text-neon-yellow font-bold uppercase mb-2 text-sm">{t.detailsSections.skillRequirements}</h4>
-                        <ul className="list-disc list-inside text-gray-300 space-y-1">
-                          {businessDetails.skillRequirements && businessDetails.skillRequirements.length > 0 ? (
-                             businessDetails.skillRequirements.map((r, i) => <li key={i}>{r}</li>)
-                          ) : (
-                             <li className="italic text-gray-500">None specified</li>
-                          )}
-                        </ul>
-                      </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                     <div className="bg-green-900/20 p-4 rounded border border-green-900">
-                        <h4 className="text-neon-green font-bold uppercase mb-2 text-sm">{t.detailsSections.pros}</h4>
-                        <ul className="space-y-1">
-                          {businessDetails.pros.map((p, i) => <li key={i} className="text-sm text-gray-300 flex items-start"><span className="text-neon-green mr-2">+</span>{p}</li>)}
-                        </ul>
-                     </div>
-                     <div className="bg-red-900/20 p-4 rounded border border-red-900">
-                        <h4 className="text-red-400 font-bold uppercase mb-2 text-sm">{t.detailsSections.cons}</h4>
-                         <ul className="space-y-1">
-                          {businessDetails.cons.map((c, i) => <li key={i} className="text-sm text-gray-300 flex items-start"><span className="text-red-400 mr-2">-</span>{c}</li>)}
-                        </ul>
-                     </div>
-                  </div>
-                  <div>
-                    <h4 className="text-neon-pink font-bold uppercase mb-2 text-sm">{t.detailsSections.marketing}</h4>
-                    <p className="text-gray-300 italic border-l-2 border-neon-pink pl-4">{businessDetails.marketingQuickTip}</p>
-                  </div>
-                  <div className="pt-4 border-t border-gray-700 flex justify-end gap-4">
-                     <button onClick={closeDetails} className="text-gray-400 hover:text-white uppercase text-sm font-bold tracking-wider px-4">
-                       {t.closeBtn}
-                     </button>
-                     <NeonButton color="pink" onClick={() => detailIdea && handleIdeaSelect(detailIdea)}>
-                       {t.analyzeBtn}
-                     </NeonButton>
-                  </div>
-               </div>
-            ) : (
-              <div className="text-red-500">{t.errors.detailsFail}</div>
-            )}
-          </NeonModal>
-        </main>
-
-        {/* Chat Widget - Always rendered but only visible if currentUser is present */}
-        {currentUser && (
-            <ChatWidget 
-                appState={appState} 
-                selectedIndustry={selectedIndustry} 
-                selectedIdea={selectedIdea} 
-                currentUser={currentUser}
-                t={t}
-                language={language}
-            />
-        )}
-      </div>
     </div>
   );
 };

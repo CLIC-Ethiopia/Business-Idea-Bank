@@ -139,6 +139,10 @@ interface LocaleStrings {
     profile: string;
     canvas: string;
     details: string;
+    stressTest: string;
+    financials: string;
+    roadmap: string;
+    sourcing: string;
   };
   industries: Record<string, string>;
   canvasSections: Record<string, string>;
@@ -150,12 +154,72 @@ interface LocaleStrings {
     cons: string;
     marketing: string;
   };
+  stressTest: {
+    tabTitle: string;
+    blueprintTab: string;
+    saturation: string;
+    failureMode: string;
+    hiddenCosts: string;
+    competitorEdge: string;
+    runSimBtn: string;
+  };
+  roi: {
+    tabTitle: string;
+    aiEstimateBtn: string;
+    inputsTitle: string;
+    resultsTitle: string;
+    labels: {
+        investment: string;
+        fixedCost: string;
+        costPerUnit: string;
+        pricePerUnit: string;
+        estSales: string;
+    };
+    metrics: {
+        margin: string;
+        breakEven: string;
+        monthlyProfit: string;
+        breakEvenTime: string;
+        months: string;
+        units: string;
+    };
+    disclaimer: string;
+  };
+  roadmap: {
+    tabTitle: string;
+    genBtn: string;
+    phase: string;
+  };
+  upvote: {
+    count: string;
+    tooltip: string;
+    sort: string;
+    sortNew: string;
+    sortPopular: string;
+  };
+  supplier: {
+    tabTitle: string;
+    intro: string;
+    verifiedSources: string;
+    findBtn: (source: string) => string;
+    copySubjectBtn: string;
+    copyBodyBtn: string;
+    copied: string;
+    noLinks: string;
+    template: {
+        subject: (machine: string) => string;
+        body: (platform: string, machine: string, user: string) => string;
+    }
+  };
   errors: {
     noIdeas: string;
     connection: string;
     canvasFail: string;
     detailsFail: string;
     loginFail: string;
+    stressTestFail: string;
+    financialsFail: string;
+    roadmapFail: string;
   }
 }
 
@@ -317,7 +381,11 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       scanningWeb: "Scanning Deep Web...",
       profile: "Analyzing Profile & Matching Technology...",
       canvas: "Generating Business Model Strategy...",
-      details: "Fetching Business Intelligence..."
+      details: "Fetching Business Intelligence...",
+      stressTest: "Running Failure Simulations...",
+      financials: "Estimating Financial Data...",
+      roadmap: "Constructing Mission Timeline...",
+      sourcing: "Locating Verified Suppliers...",
     },
     industries: {
       'agri': 'Agriculture & Farming',
@@ -353,12 +421,87 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       cons: "Cons",
       marketing: "Marketing Quick Tip"
     },
+    stressTest: {
+      tabTitle: "Simulation: Stress Test",
+      blueprintTab: "Operational Blueprint",
+      saturation: "Market Saturation",
+      failureMode: "CRITICAL FAILURE MODE",
+      hiddenCosts: "Hidden Costs",
+      competitorEdge: "Competitive Edge",
+      runSimBtn: "Run Simulation"
+    },
+    roi: {
+      tabTitle: "ROI Calculator",
+      aiEstimateBtn: "Auto-Estimate with AI",
+      inputsTitle: "Financial Inputs (Editable)",
+      resultsTitle: "Projected Outcomes",
+      labels: {
+          investment: "Initial Investment (Machine + Setup)",
+          fixedCost: "Monthly Fixed Costs (Rent, Marketing)",
+          costPerUnit: "Cost Per Unit (Material + Labor)",
+          pricePerUnit: "Selling Price Per Unit",
+          estSales: "Est. Monthly Sales (Units)"
+      },
+      metrics: {
+          margin: "Profit Margin / Unit",
+          breakEven: "Break-Even Sales",
+          monthlyProfit: "Est. Monthly Net Profit",
+          breakEvenTime: "Time to Break-Even",
+          months: "Months",
+          units: "Units"
+      },
+      disclaimer: "Figures are estimates for simulation purposes only."
+    },
+    roadmap: {
+      tabTitle: "Mission Timeline",
+      genBtn: "Generate Execution Roadmap",
+      phase: "Phase"
+    },
+    upvote: {
+        count: "Upvotes",
+        tooltip: "Validate this idea (Signal Demand)",
+        sort: "Sort By:",
+        sortNew: "Newest",
+        sortPopular: "Most Upvoted"
+    },
+    supplier: {
+        tabTitle: "Supplier Outreach",
+        intro: "Use this template to professionally contact suppliers. International trade usually requires communication in English.",
+        verifiedSources: "Verified Suppliers (AI Detected)",
+        findBtn: (source) => `Manual Search (${source})`,
+        copySubjectBtn: "Copy Subject",
+        copyBodyBtn: "Copy Message",
+        copied: "Copied!",
+        noLinks: "No direct links verified. Try a manual search.",
+        template: {
+            subject: (machine) => `Inquiry regarding ${machine} - Request for Quotation (RFQ)`,
+            body: (platform, machine, user) => `Dear ${platform} Supplier,
+
+I am interested in purchasing the "${machine}" listed on your platform. I am currently evaluating suppliers for long-term cooperation.
+
+Could you please provide a quotation for the following:
+1. FOB Price for 1 unit (Sample order).
+2. FOB Price for 5-10 units.
+3. Estimated shipping cost to [My Location].
+4. Lead time for manufacturing and delivery.
+5. Standard warranty terms.
+
+I am looking to finalize a supplier within the next 2 weeks.
+
+Best regards,
+
+${user}`
+        }
+    },
     errors: {
       noIdeas: "AI could not generate ideas. Please try again.",
       connection: "Connection error. Check API Key.",
       canvasFail: "Failed to generate canvas.",
       detailsFail: "Failed to load details.",
-      loginFail: "Authentication Failed. Use 'admin'/'admin' or 'user'/'user'."
+      loginFail: "Authentication Failed. Use 'admin'/'admin' or 'user'/'user'.",
+      stressTestFail: "Simulation failed. Neural link unstable.",
+      financialsFail: "Could not generate estimates.",
+      roadmapFail: "Timeline construction failed."
     }
   },
   am: {
@@ -518,7 +661,11 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       scanningWeb: "ድብቅ ድርን በመቃኘት ላይ...",
       profile: "መገለጫን በመተንተን እና ቴክኖሎጂን በማዛመድ ላይ...",
       canvas: "የንግድ ሞዴል ስትራቴጂ በማመንጨት ላይ...",
-      details: "የንግድ መረጃን በማምጣት ላይ..."
+      details: "የንግድ መረጃን በማምጣት ላይ...",
+      stressTest: "ሽንፈት ማስመሰሎችን በማስኬድ ላይ...",
+      financials: "የፋይናንስ መረጃን በማምጣት ላይ...",
+      roadmap: "የተልዕኮ ጊዜን በመገንባት ላይ...",
+      sourcing: "የተረጋገጡ አቅራቢዎችን በመፈለግ ላይ...",
     },
     industries: {
       'agri': 'ግብርና እና እርሻ',
@@ -554,12 +701,87 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       cons: "ጉዳቶች",
       marketing: "የግብይት ጠቃሚ ምክር"
     },
+    stressTest: {
+      tabTitle: "ማስመሰል: የጭንቀት ሙከራ",
+      blueprintTab: "የክወና ብሉፕሪንት",
+      saturation: "የገበያ ሙሌት",
+      failureMode: "ወሳኝ የውድቀት ሁኔታ",
+      hiddenCosts: "የተደበቁ ወጪዎች",
+      competitorEdge: "ተወዳዳሪነት",
+      runSimBtn: "ማስመሰልን ያሂዱ"
+    },
+    roi: {
+      tabTitle: "ROI ማስያ",
+      aiEstimateBtn: "በ AI ግምት",
+      inputsTitle: "የፋይናንስ ግብዓቶች (ሊስተካከል የሚችል)",
+      resultsTitle: "የተተነበዩ ውጤቶች",
+      labels: {
+          investment: "መነሻ ካፒታል (ማሽን + ዝግጅት)",
+          fixedCost: "ወርሃዊ ቋሚ ወጪዎች (ኪራይ ፣ ማስታወቂያ)",
+          costPerUnit: "አንድ ክፍል ወጪ (ቁሳቁስ + ጉልበት)",
+          pricePerUnit: "የመሸጫ ዋጋ",
+          estSales: "የተገመተ ወርሃዊ ሽያጭ (ብዛት)"
+      },
+      metrics: {
+          margin: "የትርፍ ህዳግ / ክፍል",
+          breakEven: "ወጪ መመለሻ ነጥብ (ብዛት)",
+          monthlyProfit: "የተገመተ ወርሃዊ የተጣራ ትርፍ",
+          breakEvenTime: "ወጪ ለመመለስ የሚፈጀው ጊዜ",
+          months: "ወራት",
+          units: "ብዛት"
+      },
+      disclaimer: "አሃዞች ለማስመሰል ዓላማዎች የተሰጡ ግምቶች ናቸው።"
+    },
+    roadmap: {
+      tabTitle: "የተልዕኮ ጊዜ",
+      genBtn: "የተግባር ፍኖተ ካርታን ያመንጩ",
+      phase: "ምዕራፍ"
+    },
+    upvote: {
+        count: "ድጋፎች",
+        tooltip: "ይህንን ሀሳብ ያረጋግጡ (የፍላጎት ምልክት)",
+        sort: "ደርድር በ:",
+        sortNew: "አዲስ",
+        sortPopular: "ብዙ ድጋፍ ያገኘ"
+    },
+    supplier: {
+        tabTitle: "አቅራቢን ያግኙ",
+        intro: "አቅራቢዎችን በብቃት ለማነጋገር ይህንን ቅጽ ይጠቀሙ። ዓለም አቀፍ ንግድ ብዙውን ጊዜ በእንግሊዝኛ ግንኙነት ይፈልጋል።",
+        verifiedSources: "የተረጋገጡ አቅራቢዎች (በ AI የተገኙ)",
+        findBtn: (source) => `በ ${source} ላይ ይፈልጉ`,
+        copySubjectBtn: "ርዕሱን ቅዳ",
+        copyBodyBtn: "መልዕክቱን ቅዳ",
+        copied: "ተቀድቷል!",
+        noLinks: "ምንም ቀጥተኛ አገናኞች አልተገኙም። በእጅ ፍለጋ ይሞክሩ።",
+        template: {
+            subject: (machine) => `Inquiry regarding ${machine} - Request for Quotation (RFQ)`,
+            body: (platform, machine, user) => `Dear ${platform} Supplier,
+
+I am interested in purchasing the "${machine}" listed on your platform. I am currently evaluating suppliers for long-term cooperation.
+
+Could you please provide a quotation for the following:
+1. FOB Price for 1 unit (Sample order).
+2. FOB Price for 5-10 units.
+3. Estimated shipping cost to [My Location].
+4. Lead time for manufacturing and delivery.
+5. Standard warranty terms.
+
+I am looking to finalize a supplier within the next 2 weeks.
+
+Best regards,
+
+${user}`
+        }
+    },
     errors: {
       noIdeas: "AI ሀሳቦችን ማመንጨት አልቻለም። እባክዎ እንደገና ይሞክሩ።",
       connection: "የግንኙነት ችግር። እባክዎ የበይነመረብ ግንኙነትዎን ያረጋግጡ።",
       canvasFail: "የንግድ ሞዴል ማመንጨት አልተሳካም።",
       detailsFail: "ዝርዝር መረጃን መጫን አልተሳካም።",
-      loginFail: "የተሳሳተ መረጃ። 'admin'/'admin' ወይም 'user'/'user' ይጠቀሙ።"
+      loginFail: "የተሳሳተ መረጃ። 'admin'/'admin' ወይም 'user'/'user' ይጠቀሙ።",
+      stressTestFail: "ማስመሰል አልተሳካም።",
+      financialsFail: "ግምቶችን ማመንጨት አልተቻለም።",
+      roadmapFail: "የጊዜ ሰሌዳ ግንባታ አልተሳካም።"
     }
   }
 };

@@ -4,6 +4,12 @@ export interface Industry {
   icon: string;
 }
 
+export interface SourcingLink {
+  title: string;
+  url: string;
+  source: string;
+}
+
 export interface BusinessIdea {
   id: string;
   machineName: string;
@@ -16,6 +22,8 @@ export interface BusinessIdea {
   imageUrl?: string;
   skillRequirements?: string[];
   operationalRequirements?: string[];
+  upvotes?: number;
+  isUpvoted?: boolean; // Local state for user interaction
 }
 
 export interface BusinessDetails {
@@ -26,6 +34,31 @@ export interface BusinessDetails {
   cons: string[];
   marketingQuickTip: string;
 }
+
+export interface StressTestAnalysis {
+  saturationLevel: 'Low' | 'Medium' | 'High';
+  saturationReason: string;
+  hiddenCosts: string[];
+  failureMode: string;
+  competitorEdge: string;
+}
+
+export interface FinancialEstimates {
+  initialInvestment: number;
+  monthlyFixedCosts: number;
+  costPerUnit: number;
+  pricePerUnit: number;
+  estimatedMonthlySales: number;
+  currency: string;
+}
+
+export interface RoadmapPhase {
+  phaseName: string;
+  duration: string;
+  steps: string[];
+}
+
+export type Roadmap = RoadmapPhase[];
 
 export interface BusinessCanvas {
   keyPartners: string[];
