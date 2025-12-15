@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { INDUSTRIES } from './constants';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, LoadingScan, NeonModal } from './components/NeonUI';
-import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails, generateStressTest, generateFinancialEstimates, generateRoadmap, findMachineSuppliers, generateCreditRiskReport, generatePitchDeck } from './services/geminiService';
-import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User, CommunityPost, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, LoanApplication, CreditRiskReport, PitchDeck } from './types';
+import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails, generateStressTest, generateFinancialEstimates, generateRoadmap, findMachineSuppliers, generateCreditRiskReport, generatePitchDeck, generateFundingMilestones } from './services/geminiService';
+import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User, CommunityPost, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, LoanApplication, CreditRiskReport, PitchDeck, FundingMilestone } from './types';
 import { TRANSLATIONS } from './locales';
 import { Auth } from './components/Auth';
 import { UserDashboard, AdminDashboard, LenderDashboard } from './components/Dashboards';
@@ -422,6 +422,10 @@ const App: React.FC = () => {
   
   const handleAnalyzeCreditRisk = async (application: LoanApplication): Promise<CreditRiskReport | null> => {
       return await generateCreditRiskReport(application, language);
+  };
+  
+  const handleGetFundingPlan = async (idea: BusinessIdea, amount: number): Promise<FundingMilestone[] | null> => {
+      return await generateFundingMilestones(idea, amount, language);
   };
 
   // Community Post Handling
@@ -1818,7 +1822,7 @@ const App: React.FC = () => {
                                                      <div className={`mt-0.5 w-4 h-4 flex-shrink-0 border rounded flex items-center justify-center transition-colors ${isChecked ? 'bg-neon-purple border-neon-purple' : 'border-gray-500'}`}>
                                                         {isChecked && <svg className="w-3 h-3 text-black font-bold" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>}
                                                      </div>
-                                                     <span className={isChecked ? 'line-through opacity-50' : ''}>{step}</span>
+                                                     <span className="line-through opacity-50">{step}</span>
                                                  </li>
                                              );
                                          })}
@@ -2021,6 +2025,7 @@ const App: React.FC = () => {
               recommendedIdeas={recommendedIdeas}
               onViewIdea={handleViewDetails}
               onGenerateRecommendations={handleGenerateRecommendations}
+              onGetFundingPlan={handleGetFundingPlan}
               isGeneratingRecs={isGeneratingRecs}
               t={t}
            />

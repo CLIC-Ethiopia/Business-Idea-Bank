@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, NeonText, LoadingScan } from './NeonUI';
-import { User, BusinessIdea, Industry, UserProfile, LoanApplication, CreditRiskReport, AnalyticsData, FundingMilestone } from '../types';
+import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, NeonText, LoadingScan, NeonModal } from './NeonUI';
+import { User, BusinessIdea, Industry, UserProfile, LoanApplication, CreditRiskReport, AnalyticsData, FundingMilestone, Language } from '../types';
 import { INDUSTRIES } from '../constants';
 import { supabase } from '../services/supabaseClient';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -11,6 +11,7 @@ interface UserDashboardProps {
   recommendedIdeas: BusinessIdea[];
   onViewIdea: (idea: BusinessIdea) => void;
   onGenerateRecommendations: (profile: UserProfile) => void;
+  onGetFundingPlan: (idea: BusinessIdea, amount: number) => Promise<FundingMilestone[] | null>;
   isGeneratingRecs: boolean;
   t: any;
 }
@@ -21,6 +22,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   recommendedIdeas, 
   onViewIdea, 
   onGenerateRecommendations,
+  onGetFundingPlan,
   isGeneratingRecs,
   t 
 }) => {
@@ -37,50 +39,55 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
   const [activeLoan, setActiveLoan] = useState<LoanApplication | null>(null);
 
+  // Funding Wizard State
+  const [fundingIdea, setFundingIdea] = useState<BusinessIdea | null>(null);
+  const [fundingAmount, setFundingAmount] = useState<number>(5000);
+  const [generatedMilestones, setGeneratedMilestones] = useState<FundingMilestone[] | null>(null);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const [isGeneratingPlan, setIsGeneratingPlan] = useState(false);
+
   const handleUpdate = () => {
     onGenerateRecommendations(profile);
   };
 
-  const handleRequestFunding = (e: React.MouseEvent, idea: BusinessIdea) => {
+  const openFundingWizard = (e: React.MouseEvent, idea: BusinessIdea) => {
       e.stopPropagation();
+      setFundingIdea(idea);
+      // Heuristic to extract number from price range string like "$2,000 - $5,000"
+      const priceString = idea.priceRange.replace(/[^0-9-]/g, '');
+      const parts = priceString.split('-');
+      const maxPrice = parts.length > 1 ? parseInt(parts[1]) : parseInt(parts[0]);
+      setFundingAmount(maxPrice || 5000);
+      setGeneratedMilestones(null);
+      setIsWizardOpen(true);
+  };
+
+  const handleGeneratePlan = async () => {
+      if (!fundingIdea) return;
+      setIsGeneratingPlan(true);
+      const plan = await onGetFundingPlan(fundingIdea, fundingAmount);
+      setGeneratedMilestones(plan);
+      setIsGeneratingPlan(false);
+  };
+
+  const confirmFundingApplication = () => {
+      if (!fundingIdea || !generatedMilestones) return;
       
-      // Simulate creating an active loan application
       const newLoan: LoanApplication = {
           id: `LOAN-${Date.now().toString().slice(-6)}`,
           applicantName: user.name,
-          businessIdea: idea,
-          loanAmount: 15000, // Mock amount
-          downPayment: 3000,
+          businessIdea: fundingIdea,
+          loanAmount: fundingAmount,
+          downPayment: Math.floor(fundingAmount * 0.2), // 20% down
           creditScore: 720,
           status: 'Active',
           timestamp: Date.now(),
-          milestones: [
-              {
-                  id: 'm1',
-                  phaseName: 'Phase 1: Procurement',
-                  description: 'Purchase of main machinery and initial stock.',
-                  amount: 5000,
-                  status: 'Released'
-              },
-              {
-                  id: 'm2',
-                  phaseName: 'Phase 2: Setup & Licensing',
-                  description: 'Rent workspace, obtain business license, and install equipment.',
-                  amount: 6000,
-                  status: 'Pending'
-              },
-              {
-                  id: 'm3',
-                  phaseName: 'Phase 3: Launch Marketing',
-                  description: 'Initial ad spend and launch event.',
-                  amount: 4000,
-                  status: 'Locked'
-              }
-          ]
+          milestones: generatedMilestones
       };
       
       setActiveLoan(newLoan);
-      alert("Application sent to Lender Network. A mockup active loan has been created.");
+      setIsWizardOpen(false);
+      alert("Application sent to Lender Network. Active tracking enabled.");
   };
 
   const handleSubmitMilestoneProof = (mId: string) => {
@@ -286,7 +293,7 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                             {t.detailsBtn}
                         </NeonButton>
                         <button 
-                            onClick={(e) => handleRequestFunding(e, idea)}
+                            onClick={(e) => openFundingWizard(e, idea)}
                             className="bg-gray-800 hover:bg-neon-yellow hover:text-black text-neon-yellow border border-neon-yellow px-2 rounded text-xs uppercase font-bold transition-colors"
                             title={t.dashboard.requestFunding}
                         >
@@ -301,6 +308,96 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
 
         </div>
       </div>
+      
+      {/* Funding Wizard Modal */}
+      <NeonModal 
+        isOpen={isWizardOpen} 
+        onClose={() => setIsWizardOpen(false)} 
+        title={t.fundingWizard.title}
+      >
+        <div className="space-y-8 p-4">
+            <div className="text-center">
+                <p className="text-neon-yellow font-bold uppercase tracking-widest">{fundingIdea?.businessTitle}</p>
+                <p className="text-gray-400 text-sm">{t.fundingWizard.subtitle}</p>
+            </div>
+
+            {/* Step 1: Confirm Amount */}
+            <div className={`transition-opacity ${generatedMilestones ? 'opacity-50' : 'opacity-100'}`}>
+                <div className="flex items-center gap-3 mb-2">
+                    <div className="w-6 h-6 rounded-full bg-neon-blue text-black font-bold flex items-center justify-center text-xs">1</div>
+                    <h4 className="text-white font-bold uppercase">{t.fundingWizard.step1Title}</h4>
+                </div>
+                <div className="ml-9">
+                    <p className="text-xs text-gray-500 mb-2">{t.fundingWizard.step1Desc}</p>
+                    <div className="flex items-center gap-4">
+                        <label className="text-xs text-gray-400 uppercase">{t.fundingWizard.confirmAmount}:</label>
+                        <input 
+                            type="number" 
+                            value={fundingAmount}
+                            onChange={(e) => setFundingAmount(Number(e.target.value))}
+                            className="bg-black border border-neon-blue rounded px-3 py-2 text-white font-mono"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Action Button: Generate */}
+            {!generatedMilestones && (
+                <div className="flex justify-center pt-4">
+                     <NeonButton 
+                        color="blue" 
+                        onClick={handleGeneratePlan}
+                        disabled={isGeneratingPlan}
+                     >
+                        {isGeneratingPlan ? (
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                                {t.fundingWizard.generating}
+                            </div>
+                        ) : t.fundingWizard.generatePlan}
+                     </NeonButton>
+                </div>
+            )}
+
+            {/* Step 2: Review Milestones */}
+            {generatedMilestones && (
+                <div className="animate-[fadeIn_0.5s_ease-out]">
+                    <div className="flex items-center gap-3 mb-4">
+                        <div className="w-6 h-6 rounded-full bg-neon-green text-black font-bold flex items-center justify-center text-xs">2</div>
+                        <h4 className="text-white font-bold uppercase">{t.fundingWizard.reviewPlan}</h4>
+                    </div>
+                    
+                    <div className="ml-9 space-y-3 mb-8">
+                        {generatedMilestones.map((m, idx) => (
+                            <div key={idx} className="bg-gray-900 border border-gray-700 p-3 rounded flex justify-between items-center">
+                                <div>
+                                    <div className="text-neon-green text-sm font-bold">{idx + 1}. {m.phaseName}</div>
+                                    <div className="text-gray-400 text-xs">{m.description}</div>
+                                </div>
+                                <div className="text-white font-mono font-bold">${m.amount.toLocaleString()}</div>
+                            </div>
+                        ))}
+                        <div className="flex justify-between items-center border-t border-gray-700 pt-2 mt-2">
+                            <span className="text-gray-500 text-xs uppercase">Total</span>
+                            <span className="text-neon-yellow font-bold">${generatedMilestones.reduce((acc, m) => acc + m.amount, 0).toLocaleString()}</span>
+                        </div>
+                    </div>
+
+                    <div className="flex gap-4 justify-end">
+                        <button 
+                            onClick={() => setIsWizardOpen(false)}
+                            className="text-gray-500 hover:text-white uppercase font-bold text-xs"
+                        >
+                            {t.fundingWizard.cancel}
+                        </button>
+                        <NeonButton color="green" onClick={confirmFundingApplication}>
+                            {t.fundingWizard.submitApp}
+                        </NeonButton>
+                    </div>
+                </div>
+            )}
+        </div>
+      </NeonModal>
     </div>
   );
 };

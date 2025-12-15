@@ -275,6 +275,20 @@ interface LocaleStrings {
         body: (platform: string, machine: string, user: string) => string;
     }
   };
+  fundingWizard: {
+      title: string;
+      subtitle: string;
+      step1Title: string;
+      step1Desc: string;
+      step2Title: string;
+      step2Desc: string;
+      confirmAmount: string;
+      generatePlan: string;
+      generating: string;
+      reviewPlan: string;
+      submitApp: string;
+      cancel: string;
+  };
   errors: {
     noIdeas: string;
     connection: string;
@@ -605,7 +619,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
         noLinks: "No direct links verified. Try a manual search.",
         template: {
             subject: (machine: string) => `Inquiry regarding ${machine} - Request for Quotation (RFQ)`,
-            body: (platform, machine, user) => `Dear ${platform} Supplier,
+            body: (platform: string, machine: string, user: string) => `Dear ${platform} Supplier,
 
 I am interested in purchasing the "${machine}" listed on your platform. I am currently evaluating suppliers for long-term cooperation.
 
@@ -622,6 +636,20 @@ Best regards,
 
 ${user}`
         }
+    },
+    fundingWizard: {
+        title: "Capital Access Uplink",
+        subtitle: "Break down your funding request into risk-mitigated milestones for higher lender approval.",
+        step1Title: "Step 1: Confirm Total Ask",
+        step1Desc: "Based on the machine cost range and initial setup estimates.",
+        step2Title: "Step 2: AI Execution Plan",
+        step2Desc: "Our AI breaks your loan into 'tranches'. Lenders release funds only when you complete a phase.",
+        confirmAmount: "Total Amount Needed",
+        generatePlan: "Generate Milestone Plan",
+        generating: "Constructing Financial Roadmap...",
+        reviewPlan: "Review Funding Milestones",
+        submitApp: "Submit Loan Application",
+        cancel: "Abort"
     },
     errors: {
       noIdeas: "AI could not generate ideas. Please try again.",
@@ -968,6 +996,20 @@ Best regards,
 
 ${user}`
         }
+    },
+    fundingWizard: {
+        title: "የካፒታል ማሰባሰቢያ ፕሮቶኮል",
+        subtitle: "ለከፍተኛ የአበዳሪ ተቀባይነት የገንዘብ ጥያቄዎን ወደ አደጋ-ቀንስ ምዕራፎች ይከፋፍሉ።",
+        step1Title: "ደረጃ 1: ጠቅላላ መጠን ያረጋግጡ",
+        step1Desc: "በማሽን ወጪ እና በመነሻ ዝግጅት ግምቶች ላይ በመመስረት።",
+        step2Title: "ደረጃ 2: AI አፈጻጸም ዕቅድ",
+        step2Desc: "የእኛ AI ብድርዎን ወደ 'ክፍሎች' ይከፍላል። ገንዘብ የሚለቀቀው አንድ ምዕራፍ ሲያጠናቅቁ ብቻ ነው።",
+        confirmAmount: "የሚያስፈልገው ጠቅላላ መጠን",
+        generatePlan: "የምዕራፍ ዕቅድ ያመንጩ",
+        generating: "የፋይናንስ ፍኖተ ካርታን በመገንባት ላይ...",
+        reviewPlan: "የገንዘብ ድጋፍ ምዕራፎችን ይገምግሙ",
+        submitApp: "የብድር ማመልከቻ ያስገቡ",
+        cancel: "ሰርዝ"
     },
     errors: {
       noIdeas: "AI ሀሳቦችን ማመንጨት አልቻለም። እባክዎ እንደገና ይሞክሩ።",

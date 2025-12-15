@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, CreditRiskReport, LoanApplication, PitchDeck } from "../types";
+import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, CreditRiskReport, LoanApplication, PitchDeck, FundingMilestone } from "../types";
 import { fetchMachineImage } from "./googleSearchService";
 
 const apiKey = process.env.API_KEY || '';
@@ -63,6 +63,20 @@ const financialEstimatesSchema: Schema = {
     currency: { type: Type.STRING, description: "Currency symbol, usually $" }
   },
   required: ["initialInvestment", "monthlyFixedCosts", "costPerUnit", "pricePerUnit", "estimatedMonthlySales", "currency"]
+};
+
+// Schema for Funding Milestones
+const fundingMilestonesSchema: Schema = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      phaseName: { type: Type.STRING, description: "Name of the funding phase (e.g. Procurement)" },
+      description: { type: Type.STRING, description: "What the funds will be used for in this phase" },
+      amount: { type: Type.NUMBER, description: "Amount needed for this specific phase in USD" }
+    },
+    required: ["phaseName", "description", "amount"]
+  }
 };
 
 // Schema for Credit Risk Report
@@ -363,6 +377,60 @@ export const generateFinancialEstimates = async (idea: BusinessIdea, language: L
   }
 };
 
+export const generateFundingMilestones = async (
+    idea: BusinessIdea, 
+    totalBudget: number, 
+    language: Language
+): Promise<FundingMilestone[] | null> => {
+    try {
+        const langInstruction = language === 'am' 
+            ? "IMPORTANT: Provide 'phaseName' and 'description' in Amharic language. Keep keys in English."
+            : "Provide content in English.";
+
+        const prompt = `
+            Act as a venture capital auditor. 
+            I need to break down a small business loan of USD $${totalBudget} into 3 or 4 logical funding milestones/tranches to reduce risk.
+
+            Business: ${idea.businessTitle}
+            Asset: ${idea.machineName}
+
+            Rules:
+            1. The first milestone MUST be the procurement of the machine/asset.
+            2. The sum of all 'amount' fields MUST equal exactly ${totalBudget}.
+            3. Phases should follow logical order: Procurement -> Operations Setup -> Launch/Marketing.
+
+            Return a JSON array of milestones.
+            ${langInstruction}
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: fundingMilestonesSchema,
+                temperature: 0.4
+            }
+        });
+
+        if (response.text) {
+            const raw = JSON.parse(response.text) as any[];
+            // Hydrate with client-side status and IDs
+            return raw.map((m, i) => ({
+                id: `ms-${Date.now()}-${i}`,
+                phaseName: m.phaseName,
+                description: m.description,
+                amount: m.amount,
+                status: i === 0 ? 'Released' : (i === 1 ? 'Pending' : 'Locked') // First released for simulation
+            }));
+        }
+        return null;
+    } catch (error) {
+        console.error("Error generating funding milestones:", error);
+        return null;
+    }
+};
+
 export const generateRoadmap = async (idea: BusinessIdea, language: Language): Promise<Roadmap | null> => {
     try {
         const langInstruction = language === 'am' 
@@ -567,8 +635,9 @@ export const generateCreditRiskReport = async (
             3. Calculate LTV (Loan to Value) based on loan amount vs approximate machine cost.
             4. Identify Strengths (Collateral value, down payment size, etc).
             5. Identify Weaknesses (Startup risk, credit score, etc).
-            6. Provide a Verdict (Approved/Conditional/Rejected).
-            7. Set Stipulations if Conditional.
+            6. Identify Stipulations if Conditional.
+            7. Provide a Verdict (Approved/Conditional/Rejected).
+            8. Set Stipulations if Conditional.
 
             ${langInstruction}
         `;
