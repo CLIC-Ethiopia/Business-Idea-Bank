@@ -65,6 +65,12 @@ interface LocaleStrings {
     recTag: string;
     systemLogs: string;
     requestFunding: string;
+    activeFunding: string;
+    milestoneTracker: string;
+    releaseFunds: string;
+    submitProof: string;
+    proofSubmitted: string;
+    fundsReleased: string;
   };
   admin: {
     tabs: {
@@ -98,6 +104,9 @@ interface LocaleStrings {
       applicationDate: string;
       applicant: string;
       requested: string;
+      constructMilestones: string;
+      milestonePlan: string;
+      release: string;
   };
   community: {
     title: string;
@@ -345,7 +354,13 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       updateProfileHint: "Update your profile to receive AI-powered recommendations.",
       recTag: "REC",
       systemLogs: "System Logs",
-      requestFunding: "Request Funding"
+      requestFunding: "Request Funding",
+      activeFunding: "Active Capital Campaigns",
+      milestoneTracker: "Milestone-Based Capital Tracker",
+      releaseFunds: "Capital Released",
+      submitProof: "Submit Milestone Proof",
+      proofSubmitted: "Proof Submitted. Awaiting Lender Review.",
+      fundsReleased: "Funds Released"
     },
     admin: {
         tabs: {
@@ -378,7 +393,10 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
         emptyQueue: "Queue Empty. Waiting for applications.",
         applicationDate: "Date Applied",
         applicant: "Applicant",
-        requested: "Requested"
+        requested: "Requested",
+        constructMilestones: "Approve & Construct Milestones",
+        milestonePlan: "Capital Release Plan",
+        release: "Release Funds"
     },
     community: {
       title: "NEON HIVE",
@@ -586,7 +604,7 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
         copied: "Copied!",
         noLinks: "No direct links verified. Try a manual search.",
         template: {
-            subject: (machine) => `Inquiry regarding ${machine} - Request for Quotation (RFQ)`,
+            subject: (machine: string) => `Inquiry regarding ${machine} - Request for Quotation (RFQ)`,
             body: (platform, machine, user) => `Dear ${platform} Supplier,
 
 I am interested in purchasing the "${machine}" listed on your platform. I am currently evaluating suppliers for long-term cooperation.
@@ -682,7 +700,13 @@ ${user}`
       updateProfileHint: "በ AI የተጎለበተ ምክሮችን ለማግኘት መገለጫዎን ያዘምኑ።",
       recTag: "ምክር",
       systemLogs: "የስርዓት ምዝግብ ማስታወሻዎች",
-      requestFunding: "የገንዘብ ድጋፍ ይጠይቁ"
+      requestFunding: "የገንዘብ ድጋፍ ይጠይቁ",
+      activeFunding: "ንቁ የካፒታል ዘመቻዎች",
+      milestoneTracker: "በምዕራፍ ላይ የተመሰረተ ካፒታል መከታተያ",
+      releaseFunds: "የተለቀቀ ካፒታል",
+      submitProof: "የምዕራፍ ማረጋገጫ አስገባ",
+      proofSubmitted: "ማረጋገጫ ገብቷል። የአበዳሪ ግምገማ በመጠበቅ ላይ።",
+      fundsReleased: "ገንዘብ ተለቋል"
     },
     admin: {
         tabs: {
@@ -715,7 +739,10 @@ ${user}`
         emptyQueue: "ምንም ማመልከቻ የለም።",
         applicationDate: "የማመልከቻ ቀን",
         applicant: "አመልካች",
-        requested: "የተጠየቀው"
+        requested: "የተጠየቀው",
+        constructMilestones: "ምዕራፎችን አጽድቅ እና ገንባ",
+        milestonePlan: "የካፒታል መልቀቂያ ዕቅድ",
+        release: "ገንዘብ ልቀቅ"
     },
     community: {
       title: "NEON HIVE",
@@ -737,7 +764,7 @@ ${user}`
         error: "የስርዓት ችግር! የነርቭ መስመሮችን እንደገና በማስተካከል ላይ...",
         suggestions: {
             risks: (title) => `ለ ${title} ዋና ዋና አደጋዎች ምንድን ናቸው?`,
-            market: (name) => `${name}ን እንዴት ማስተዋወቅ እችላለሁ?`,
+            market: (name) => `ለ ${name} ገበያ እንዴት ማግኘት እችላለሁ?`,
             startup: "ዝቅተኛ መነሻ ካፒታል የሚጠይቀው ዘርፍ የትኛው ነው?",
             profitable: "በአሁኑ ሰዓት እጅግ አትራፊ የሆነው ዘርፍ የትኛው ነው?"
         }

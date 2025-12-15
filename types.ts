@@ -65,6 +65,15 @@ export interface CreditRiskReport {
   maxLoanAmount: number;
 }
 
+export interface FundingMilestone {
+  id: string;
+  phaseName: string;
+  description: string;
+  amount: number;
+  status: 'Locked' | 'Pending' | 'In Review' | 'Released';
+  evidence?: string;
+}
+
 export interface LoanApplication {
   id: string;
   applicantName: string;
@@ -72,8 +81,9 @@ export interface LoanApplication {
   loanAmount: number;
   downPayment: number;
   creditScore: number; // Self-reported for simulation
-  status: 'Pending' | 'Reviewing' | 'Approved' | 'Rejected';
+  status: 'Pending' | 'Reviewing' | 'Approved' | 'Rejected' | 'Active';
   timestamp: number;
+  milestones?: FundingMilestone[];
 }
 
 export interface RoadmapPhase {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, NeonText, LoadingScan } from './NeonUI';
-import { User, BusinessIdea, Industry, UserProfile, LoanApplication, CreditRiskReport, AnalyticsData } from '../types';
+import { User, BusinessIdea, Industry, UserProfile, LoanApplication, CreditRiskReport, AnalyticsData, FundingMilestone } from '../types';
 import { INDUSTRIES } from '../constants';
 import { supabase } from '../services/supabaseClient';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
@@ -35,13 +35,66 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
     timeCommitment: 'Part-time'
   });
 
+  const [activeLoan, setActiveLoan] = useState<LoanApplication | null>(null);
+
   const handleUpdate = () => {
     onGenerateRecommendations(profile);
   };
 
-  const handleRequestFunding = (e: React.MouseEvent) => {
+  const handleRequestFunding = (e: React.MouseEvent, idea: BusinessIdea) => {
       e.stopPropagation();
-      alert("Application sent to Lender Network. Check status in 24h.");
+      
+      // Simulate creating an active loan application
+      const newLoan: LoanApplication = {
+          id: `LOAN-${Date.now().toString().slice(-6)}`,
+          applicantName: user.name,
+          businessIdea: idea,
+          loanAmount: 15000, // Mock amount
+          downPayment: 3000,
+          creditScore: 720,
+          status: 'Active',
+          timestamp: Date.now(),
+          milestones: [
+              {
+                  id: 'm1',
+                  phaseName: 'Phase 1: Procurement',
+                  description: 'Purchase of main machinery and initial stock.',
+                  amount: 5000,
+                  status: 'Released'
+              },
+              {
+                  id: 'm2',
+                  phaseName: 'Phase 2: Setup & Licensing',
+                  description: 'Rent workspace, obtain business license, and install equipment.',
+                  amount: 6000,
+                  status: 'Pending'
+              },
+              {
+                  id: 'm3',
+                  phaseName: 'Phase 3: Launch Marketing',
+                  description: 'Initial ad spend and launch event.',
+                  amount: 4000,
+                  status: 'Locked'
+              }
+          ]
+      };
+      
+      setActiveLoan(newLoan);
+      alert("Application sent to Lender Network. A mockup active loan has been created.");
+  };
+
+  const handleSubmitMilestoneProof = (mId: string) => {
+      if (!activeLoan || !activeLoan.milestones) return;
+      
+      const updatedMilestones = activeLoan.milestones.map(m => {
+          if (m.id === mId) {
+              return { ...m, status: 'In Review' as const };
+          }
+          return m;
+      });
+      
+      setActiveLoan({ ...activeLoan, milestones: updatedMilestones });
+      alert(t.dashboard.proofSubmitted);
   };
 
   return (
@@ -111,6 +164,69 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
         {/* Right Column: Recommendations & Saved (8 cols) */}
         <div className="lg:col-span-8 space-y-8">
           
+          {/* Active Capital Campaigns Section (Milestone Release) */}
+          {activeLoan && activeLoan.milestones && (
+              <div className="animate-[fadeIn_0.5s_ease-out]">
+                  <h3 className="text-xl font-bold text-neon-yellow mb-4 uppercase flex items-center gap-2">
+                      <span className="w-2 h-2 bg-neon-yellow rounded-full animate-pulse"></span>
+                      {t.dashboard.activeFunding}
+                  </h3>
+                  <NeonCard color="yellow" className="flex flex-col gap-4">
+                      <div className="flex justify-between items-start border-b border-gray-800 pb-4">
+                          <div>
+                              <h4 className="font-bold text-white text-lg">{activeLoan.businessIdea.businessTitle}</h4>
+                              <p className="text-neon-yellow font-mono text-sm">{activeLoan.id}</p>
+                          </div>
+                          <div className="text-right">
+                              <div className="text-xs text-gray-500 uppercase">Total Loan</div>
+                              <div className="font-bold text-white">${activeLoan.loanAmount.toLocaleString()}</div>
+                          </div>
+                      </div>
+
+                      <div className="space-y-4">
+                          <h5 className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t.dashboard.milestoneTracker}</h5>
+                          {activeLoan.milestones.map((m, i) => (
+                              <div key={m.id} className={`p-4 rounded border flex flex-col md:flex-row justify-between items-center gap-4 ${
+                                  m.status === 'Released' ? 'bg-green-900/10 border-green-900/50' : 
+                                  m.status === 'Locked' ? 'bg-black/30 border-gray-800 opacity-50' : 'bg-gray-900/30 border-gray-700'
+                              }`}>
+                                  <div className="flex items-start gap-3 flex-grow">
+                                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                                          m.status === 'Released' ? 'bg-neon-green text-black' : 
+                                          m.status === 'In Review' ? 'bg-neon-yellow text-black' : 'bg-gray-700 text-gray-400'
+                                      }`}>
+                                          {i + 1}
+                                      </div>
+                                      <div>
+                                          <div className="text-white font-bold text-sm">{m.phaseName}</div>
+                                          <div className="text-gray-400 text-xs mb-1">{m.description}</div>
+                                          <div className="text-neon-yellow font-mono text-sm">${m.amount.toLocaleString()}</div>
+                                      </div>
+                                  </div>
+                                  
+                                  <div className="flex items-center gap-2 min-w-[120px] justify-end">
+                                      {m.status === 'Released' ? (
+                                          <span className="text-neon-green text-xs font-bold uppercase border border-neon-green px-2 py-1 rounded">{t.dashboard.fundsReleased}</span>
+                                      ) : m.status === 'Locked' ? (
+                                          <span className="text-gray-500 text-xs font-bold uppercase"><span className="mr-1">🔒</span> Locked</span>
+                                      ) : m.status === 'In Review' ? (
+                                          <span className="text-neon-yellow text-xs font-bold uppercase animate-pulse">In Review</span>
+                                      ) : (
+                                          <button 
+                                              onClick={() => handleSubmitMilestoneProof(m.id)}
+                                              className="text-xs bg-neon-blue text-black font-bold uppercase px-3 py-2 rounded hover:bg-white transition-colors"
+                                          >
+                                              {t.dashboard.submitProof}
+                                          </button>
+                                      )}
+                                  </div>
+                              </div>
+                          ))}
+                      </div>
+                  </NeonCard>
+              </div>
+          )}
+
           {/* Recommendations Section */}
           <div>
             <h3 className="text-xl font-bold text-neon-pink mb-4 uppercase flex items-center gap-2">
@@ -170,9 +286,9 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                             {t.detailsBtn}
                         </NeonButton>
                         <button 
-                            onClick={handleRequestFunding}
+                            onClick={(e) => handleRequestFunding(e, idea)}
                             className="bg-gray-800 hover:bg-neon-yellow hover:text-black text-neon-yellow border border-neon-yellow px-2 rounded text-xs uppercase font-bold transition-colors"
-                            title="Request Funding"
+                            title={t.dashboard.requestFunding}
                         >
                             $
                         </button>
@@ -776,6 +892,59 @@ export const LenderDashboard: React.FC<LenderDashboardProps> = ({ user, onAnalyz
         setLoading(false);
     };
 
+    const handleApproveWithMilestones = () => {
+        if (!selectedApp) return;
+        
+        const newMilestones: FundingMilestone[] = [
+            {
+                id: 'm1',
+                phaseName: 'Phase 1: Procurement',
+                description: 'Initial machine purchase',
+                amount: Math.floor(selectedApp.loanAmount * 0.4),
+                status: 'Released'
+            },
+            {
+                id: 'm2',
+                phaseName: 'Phase 2: Operations',
+                description: 'Site setup and licensing',
+                amount: Math.floor(selectedApp.loanAmount * 0.4),
+                status: 'Pending'
+            },
+            {
+                id: 'm3',
+                phaseName: 'Phase 3: Growth',
+                description: 'Marketing and scaling',
+                amount: Math.ceil(selectedApp.loanAmount * 0.2),
+                status: 'Locked'
+            }
+        ];
+
+        const updatedApp = { 
+            ...selectedApp, 
+            status: 'Approved' as const, 
+            milestones: newMilestones 
+        };
+
+        setApplications(prev => prev.map(a => a.id === selectedApp.id ? updatedApp : a));
+        setSelectedApp(updatedApp);
+        setReport(null); // Clear report to show milestone view
+    };
+
+    const handleReleaseFund = (mId: string) => {
+        if (!selectedApp || !selectedApp.milestones) return;
+
+        const updatedMilestones = selectedApp.milestones.map(m => {
+            if (m.id === mId) return { ...m, status: 'Released' as const };
+            if (m.id === 'm2' && mId === 'm1') return { ...m, status: 'Pending' as const }; // Unlock next
+            if (m.id === 'm3' && mId === 'm2') return { ...m, status: 'Pending' as const }; // Unlock next
+            return m;
+        });
+
+        const updatedApp = { ...selectedApp, milestones: updatedMilestones };
+        setApplications(prev => prev.map(a => a.id === selectedApp.id ? updatedApp : a));
+        setSelectedApp(updatedApp);
+    }
+
     return (
         <div className="container mx-auto px-4 py-8">
             <div className="mb-8 flex justify-between items-end">
@@ -810,6 +979,9 @@ export const LenderDashboard: React.FC<LenderDashboardProps> = ({ user, onAnalyz
                                     <span className="text-gray-500">{t.lender.requested}:</span>
                                     <span className="text-white font-mono">${app.loanAmount.toLocaleString()}</span>
                                 </div>
+                                {app.status === 'Approved' && (
+                                    <div className="mt-2 text-center text-[10px] bg-green-500 text-black font-bold uppercase rounded">Approved</div>
+                                )}
                             </div>
                         ))
                     )}
@@ -841,37 +1013,46 @@ export const LenderDashboard: React.FC<LenderDashboardProps> = ({ user, onAnalyz
                                     <p className="text-gray-400 text-xs mb-2">{selectedApp.businessIdea.machineName}</p>
                                     <p className="text-gray-500 text-xs leading-relaxed">{selectedApp.businessIdea.description}</p>
                                 </div>
-                                <div className="flex flex-col justify-center items-center">
-                                    {!report ? (
-                                        <NeonButton color="yellow" onClick={handleAnalyze} disabled={loading} className="w-full h-full flex flex-col items-center justify-center gap-2">
-                                            {loading ? (
-                                                <>
-                                                    <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                                                    <span>{t.loading.riskReport}</span>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <span className="text-2xl">⚡</span>
-                                                    <span>{t.lender.analyzeBtn}</span>
-                                                </>
-                                            )}
-                                        </NeonButton>
-                                    ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-neon-yellow/5 border border-neon-yellow/30 rounded text-center">
-                                            <div className="text-xs text-neon-yellow uppercase font-bold mb-1">{t.lender.score}</div>
-                                            <div className="text-5xl font-bold text-white mb-2">{report.score}</div>
-                                            <div className={`text-sm font-bold px-3 py-1 rounded uppercase ${
-                                                report.verdict === 'Approved' ? 'bg-green-500 text-black' : 
-                                                report.verdict === 'Conditional' ? 'bg-yellow-500 text-black' : 'bg-red-500 text-white'
-                                            }`}>
-                                                {report.verdict}
+                                
+                                {selectedApp.status === 'Approved' && selectedApp.milestones ? (
+                                    <div className="flex flex-col justify-center items-center p-4 bg-green-900/20 border border-green-900 rounded">
+                                        <h4 className="text-green-500 font-bold uppercase text-sm mb-2">Loan Active</h4>
+                                        <p className="text-xs text-gray-400 text-center">Funds are distributed according to the milestone plan.</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col justify-center items-center">
+                                        {!report ? (
+                                            <NeonButton color="yellow" onClick={handleAnalyze} disabled={loading} className="w-full h-full flex flex-col items-center justify-center gap-2">
+                                                {loading ? (
+                                                    <>
+                                                        <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                                                        <span>{t.loading.riskReport}</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-2xl">⚡</span>
+                                                        <span>{t.lender.analyzeBtn}</span>
+                                                    </>
+                                                )}
+                                            </NeonButton>
+                                        ) : (
+                                            <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-neon-yellow/5 border border-neon-yellow/30 rounded text-center">
+                                                <div className="text-xs text-neon-yellow uppercase font-bold mb-1">{t.lender.score}</div>
+                                                <div className="text-5xl font-bold text-white mb-2">{report.score}</div>
+                                                <div className={`text-sm font-bold px-3 py-1 rounded uppercase ${
+                                                    report.verdict === 'Approved' ? 'bg-green-500 text-black' : 
+                                                    report.verdict === 'Conditional' ? 'bg-yellow-500 text-black' : 'bg-red-500 text-white'
+                                                }`}>
+                                                    {report.verdict}
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
-                            {report && (
+                            {/* Risk Report View */}
+                            {report && selectedApp.status !== 'Approved' && (
                                 <div className="animate-[fadeIn_0.5s_ease-out] space-y-6 border-t border-gray-800 pt-6">
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                                         <div className="bg-black/40 p-2 rounded">
@@ -915,6 +1096,50 @@ export const LenderDashboard: React.FC<LenderDashboardProps> = ({ user, onAnalyz
                                             </ul>
                                         </div>
                                     )}
+
+                                    <div className="text-center pt-4">
+                                        <NeonButton color="green" onClick={handleApproveWithMilestones}>
+                                            {t.lender.constructMilestones}
+                                        </NeonButton>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Milestone View (For Approved Apps) */}
+                            {selectedApp.status === 'Approved' && selectedApp.milestones && (
+                                <div className="animate-[fadeIn_0.5s_ease-out] space-y-4 border-t border-gray-800 pt-6">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="text-neon-yellow text-sm font-bold uppercase">{t.lender.milestonePlan}</h4>
+                                        <span className="text-xs text-gray-500">Total Released: ${selectedApp.milestones.filter(m => m.status === 'Released').reduce((acc, m) => acc + m.amount, 0).toLocaleString()}</span>
+                                    </div>
+                                    
+                                    {selectedApp.milestones.map((m, i) => (
+                                        <div key={m.id} className="bg-black/30 border border-gray-800 rounded p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                                            <div className="flex items-start gap-3 flex-grow">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                                                    m.status === 'Released' ? 'bg-neon-green text-black' : 'bg-gray-800 text-gray-400'
+                                                }`}>
+                                                    {i + 1}
+                                                </div>
+                                                <div>
+                                                    <div className="text-white font-bold">{m.phaseName}</div>
+                                                    <div className="text-xs text-gray-400">{m.description}</div>
+                                                    <div className="text-neon-yellow font-mono text-sm mt-1">${m.amount.toLocaleString()}</div>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                {m.status === 'Released' ? (
+                                                    <div className="text-neon-green text-xs font-bold uppercase border border-neon-green px-3 py-1 rounded">Funds Released</div>
+                                                ) : m.status === 'Locked' ? (
+                                                    <div className="text-gray-600 text-xs font-bold uppercase flex items-center gap-1"><span className="text-base">🔒</span> Locked</div>
+                                                ) : (
+                                                    <NeonButton color="green" onClick={() => handleReleaseFund(m.id)} className="text-xs py-2 px-4">
+                                                        {t.lender.release}
+                                                    </NeonButton>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             )}
 
