@@ -10,6 +10,7 @@ interface UserDashboardProps {
   savedIdeas: BusinessIdea[];
   recommendedIdeas: BusinessIdea[];
   onViewIdea: (idea: BusinessIdea) => void;
+  onSaveIdea: (idea: BusinessIdea) => void;
   onGenerateRecommendations: (profile: UserProfile) => void;
   onGetFundingPlan: (idea: BusinessIdea, amount: number) => Promise<FundingMilestone[] | null>;
   isGeneratingRecs: boolean;
@@ -20,7 +21,8 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
   user, 
   savedIdeas, 
   recommendedIdeas, 
-  onViewIdea, 
+  onViewIdea,
+  onSaveIdea,
   onGenerateRecommendations,
   onGetFundingPlan,
   isGeneratingRecs,
@@ -250,19 +252,33 @@ export const UserDashboard: React.FC<UserDashboardProps> = ({
                </div>
             ) : (
                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 {recommendedIdeas.map((idea, idx) => (
-                    <NeonCard key={`rec-${idx}`} color="pink" className="flex flex-col">
-                       <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-bold text-white text-md">{idea.businessTitle}</h4>
-                          <span className="text-[10px] bg-neon-pink text-white px-1.5 py-0.5 rounded uppercase">{t.dashboard.recTag}</span>
-                       </div>
-                       <p className="text-neon-blue text-xs mb-2">{idea.machineName}</p>
-                       <p className="text-gray-400 text-xs mb-3 line-clamp-2">{idea.description}</p>
-                       <NeonButton color="pink" fullWidth onClick={() => onViewIdea(idea)} className="mt-auto text-xs py-1.5">
-                          {t.detailsBtn}
-                       </NeonButton>
-                    </NeonCard>
-                 ))}
+                 {recommendedIdeas.map((idea, idx) => {
+                    const isSaved = savedIdeas.some(saved => saved.businessTitle === idea.businessTitle);
+                    return (
+                        <NeonCard key={`rec-${idx}`} color="pink" className="flex flex-col">
+                           <div className="flex justify-between items-start mb-2">
+                              <h4 className="font-bold text-white text-md">{idea.businessTitle}</h4>
+                              <span className="text-[10px] bg-neon-pink text-white px-1.5 py-0.5 rounded uppercase">{t.dashboard.recTag}</span>
+                           </div>
+                           <p className="text-neon-blue text-xs mb-2">{idea.machineName}</p>
+                           <p className="text-gray-400 text-xs mb-3 line-clamp-2">{idea.description}</p>
+                           <div className="mt-auto flex gap-2">
+                               <NeonButton color="pink" fullWidth onClick={() => onViewIdea(idea)} className="text-xs py-1.5 flex-1">
+                                  {t.detailsBtn}
+                               </NeonButton>
+                               <NeonButton 
+                                    color="green" 
+                                    fullWidth 
+                                    onClick={() => onSaveIdea(idea)} 
+                                    className={`text-xs py-1.5 flex-1 ${isSaved ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    disabled={isSaved}
+                               >
+                                  {isSaved ? t.savedBtn : t.saveBtn}
+                               </NeonButton>
+                           </div>
+                        </NeonCard>
+                    );
+                 })}
                </div>
             )}
           </div>

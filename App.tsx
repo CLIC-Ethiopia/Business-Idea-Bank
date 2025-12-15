@@ -2026,6 +2026,7 @@ const App: React.FC = () => {
               onViewIdea={handleViewDetails}
               onGenerateRecommendations={handleGenerateRecommendations}
               onGetFundingPlan={handleGetFundingPlan}
+              onSaveIdea={handleSaveIdea}
               isGeneratingRecs={isGeneratingRecs}
               t={t}
            />
