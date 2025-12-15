@@ -1,11 +1,13 @@
 
-const API_KEY = "AIzaSyC8mI8YK66ttK3piJvoVerg_PrDc2wWKjM";
-const CX = "371351460d53a4daa";
+// Keys should be loaded from environment variables to ensure security and validity.
+// Do NOT hardcode keys here.
+const API_KEY = process.env.GOOGLE_SEARCH_API_KEY || "";
+const CX = process.env.GOOGLE_SEARCH_CX || "";
 
 export const fetchMachineImage = async (query: string): Promise<string | undefined> => {
   // Graceful fallback if keys are not configured
   if (!API_KEY || !CX) {
-    console.warn("Google Search API keys are missing. Falling back to placeholders.");
+    // Return undefined silently to allow UI to use default placeholders
     return undefined;
   }
 
@@ -17,7 +19,9 @@ export const fetchMachineImage = async (query: string): Promise<string | undefin
     const response = await fetch(url);
     
     if (!response.ok) {
-        throw new Error(`Google Search API Error: ${response.statusText}`);
+        // Log a warning instead of an error to keep the console clean
+        console.warn(`Google Search API warning for "${query}": Status ${response.status}`);
+        return undefined;
     }
 
     const data = await response.json();
@@ -26,7 +30,8 @@ export const fetchMachineImage = async (query: string): Promise<string | undefin
       return data.items[0].link;
     }
   } catch (error) {
-    console.error("Error fetching image for query:", query, error);
+    // Silently handle network errors
+    console.warn(`Failed to fetch image for query "${query}"`);
   }
   
   return undefined;
