@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { INDUSTRIES } from './constants';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, LoadingScan, NeonModal } from './components/NeonUI';
-import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails, generateStressTest, generateFinancialEstimates, generateRoadmap, findMachineSuppliers, generateCreditRiskReport } from './services/geminiService';
-import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User, CommunityPost, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, LoanApplication, CreditRiskReport } from './types';
+import { generateIdeas, generateCanvas, generatePersonalizedIdeas, generateBusinessDetails, generateStressTest, generateFinancialEstimates, generateRoadmap, findMachineSuppliers, generateCreditRiskReport, generatePitchDeck } from './services/geminiService';
+import { Industry, BusinessIdea, BusinessCanvas, AppState, UserProfile, Language, BusinessDetails, User, CommunityPost, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, LoanApplication, CreditRiskReport, PitchDeck } from './types';
 import { TRANSLATIONS } from './locales';
 import { Auth } from './components/Auth';
 import { UserDashboard, AdminDashboard, LenderDashboard } from './components/Dashboards';
@@ -126,8 +126,8 @@ const App: React.FC = () => {
   const [businessDetails, setBusinessDetails] = useState<BusinessDetails | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
   
-  // Stress Test & ROI & Supplier State
-  const [activeDetailTab, setActiveDetailTab] = useState<'blueprint' | 'stress_test' | 'roi' | 'roadmap' | 'supplier'>('blueprint');
+  // Stress Test & ROI & Supplier & Pitch Deck State
+  const [activeDetailTab, setActiveDetailTab] = useState<'blueprint' | 'stress_test' | 'roi' | 'roadmap' | 'supplier' | 'pitch_deck'>('blueprint');
   const [stressTestResult, setStressTestResult] = useState<StressTestAnalysis | null>(null);
   const [loadingStressTest, setLoadingStressTest] = useState(false);
   
@@ -151,6 +151,11 @@ const App: React.FC = () => {
   // Supplier Links State
   const [sourcingLinks, setSourcingLinks] = useState<SourcingLink[] | null>(null);
   const [loadingSourcing, setLoadingSourcing] = useState(false);
+
+  // Pitch Deck State
+  const [pitchDeck, setPitchDeck] = useState<PitchDeck | null>(null);
+  const [loadingPitchDeck, setLoadingPitchDeck] = useState(false);
+  const [isDownloadingDeck, setIsDownloadingDeck] = useState(false);
 
   // User Profile State (for idea generation wizard)
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -555,6 +560,7 @@ const App: React.FC = () => {
     setStressTestResult(null);
     setFinancials(null);
     setRoadmap(null);
+    setPitchDeck(null); // Reset pitch deck
     setRoadmapProgress({}); // Reset progress state when viewing new idea
     setSourcingLinks(null); // Reset sourcing links
     // Reset landed cost default enabled state
@@ -697,12 +703,70 @@ const App: React.FC = () => {
       }
   };
 
+  const handleLoadPitchDeck = async () => {
+      if (!detailIdea) return;
+      setActiveDetailTab('pitch_deck');
+      
+      if (pitchDeck) return;
+
+      setLoadingPitchDeck(true);
+      try {
+          const deck = await generatePitchDeck(detailIdea, language);
+          setPitchDeck(deck);
+      } catch (e) {
+          console.error("Pitch Deck failed", e);
+      } finally {
+          setLoadingPitchDeck(false);
+      }
+  };
+
+  const downloadPitchDeckPDF = async () => {
+      const element = document.getElementById('pitch-deck-container');
+      if (!element) return;
+
+      setIsDownloadingDeck(true);
+      try {
+          const pdf = new jsPDF('l', 'mm', 'a4'); // Landscape A4
+          const pdfWidth = pdf.internal.pageSize.getWidth();
+          const pdfHeight = pdf.internal.pageSize.getHeight();
+          
+          // Get all slide elements
+          const slides = element.querySelectorAll('.pitch-slide');
+          
+          for (let i = 0; i < slides.length; i++) {
+              const slide = slides[i] as HTMLElement;
+              
+              // We need to temporarily make sure the element is visible and captured properly
+              // html2canvas works best on visible elements. The container should be visible.
+              
+              const canvas = await html2canvas(slide, {
+                  scale: 2,
+                  useCORS: true,
+                  backgroundColor: '#050505'
+              });
+              
+              const imgData = canvas.toDataURL('image/png');
+              
+              if (i > 0) pdf.addPage();
+              pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+          }
+          
+          pdf.save(`${detailIdea?.businessTitle.replace(/\s+/g, '_')}_PitchDeck.pdf`);
+      } catch (err) {
+          console.error("Failed to generate deck PDF", err);
+          alert("Error generating PDF.");
+      } finally {
+          setIsDownloadingDeck(false);
+      }
+  };
+
   const closeDetails = () => {
     setDetailIdea(null);
     setBusinessDetails(null);
     setStressTestResult(null);
     setFinancials(null);
     setRoadmap(null);
+    setPitchDeck(null);
     setRoadmapProgress({});
     setSourcingLinks(null);
     setLoadingDetails(false);
@@ -710,6 +774,7 @@ const App: React.FC = () => {
     setLoadingFinancials(false);
     setLoadingRoadmap(false);
     setLoadingSourcing(false);
+    setLoadingPitchDeck(false);
   };
 
   const handleIdeaSelect = async (idea: BusinessIdea) => {
@@ -1434,6 +1499,12 @@ const App: React.FC = () => {
                     {t.roadmap.tabTitle}
                 </button>
                 <button 
+                    onClick={() => { setActiveDetailTab('pitch_deck'); handleLoadPitchDeck(); }}
+                    className={`px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeDetailTab === 'pitch_deck' ? 'text-white border-b-2 border-white' : 'text-gray-500 hover:text-white'}`}
+                >
+                    {t.pitchDeck.tabTitle}
+                </button>
+                <button 
                     onClick={() => { setActiveDetailTab('supplier'); handleLoadSourcing(); }}
                     className={`px-4 py-2 text-sm font-bold uppercase tracking-wider transition-colors whitespace-nowrap ${activeDetailTab === 'supplier' ? 'text-neon-yellow border-b-2 border-neon-yellow' : 'text-gray-500 hover:text-white'}`}
                 >
@@ -1754,6 +1825,70 @@ const App: React.FC = () => {
                                      </ul>
                                  </div>
                              ))}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* TAB CONTENT: PITCH DECK */}
+            {activeDetailTab === 'pitch_deck' && (
+                <div className="animate-[fadeIn_0.3s_ease-out]">
+                    {!pitchDeck ? (
+                         loadingPitchDeck ? (
+                            <div className="p-8 text-center">
+                                <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                                <p className="text-white animate-pulse">{t.loading.pitchDeck}</p>
+                            </div>
+                         ) : (
+                             <div className="text-center py-8">
+                                <NeonButton onClick={handleLoadPitchDeck} className="bg-white text-black hover:bg-gray-200 shadow-white border-white">{t.pitchDeck.genBtn}</NeonButton>
+                             </div>
+                         )
+                    ) : (
+                        <div className="space-y-6">
+                            <div className="flex justify-end">
+                                <NeonButton 
+                                    onClick={downloadPitchDeckPDF} 
+                                    disabled={isDownloadingDeck}
+                                    className="text-xs py-2 px-4 bg-white text-black hover:bg-gray-200 border-white"
+                                >
+                                    {isDownloadingDeck ? (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                                            <span>{t.downloading}</span>
+                                        </div>
+                                    ) : (
+                                        t.pitchDeck.downloadPdf
+                                    )}
+                                </NeonButton>
+                            </div>
+                            
+                            <div id="pitch-deck-container" className="space-y-8">
+                                {pitchDeck.slides.map((slide, idx) => (
+                                    <div key={idx} className="pitch-slide aspect-video bg-black border-2 border-white p-8 relative overflow-hidden flex flex-col justify-center">
+                                        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-neon-blue via-neon-pink to-neon-purple"></div>
+                                        
+                                        <div className="text-xs font-bold text-gray-500 uppercase tracking-[0.2em] mb-4">Slide {idx + 1}</div>
+                                        
+                                        <h3 className="text-4xl font-bold text-white uppercase mb-2 font-orbitron">{slide.title}</h3>
+                                        <p className="text-neon-blue text-lg font-bold mb-8 uppercase tracking-widest">{slide.subtitle}</p>
+                                        
+                                        <div className="space-y-4">
+                                            {slide.bullets.map((bullet, bIdx) => (
+                                                <div key={bIdx} className="flex items-start gap-4">
+                                                    <div className="w-2 h-2 bg-white rotate-45 mt-2 flex-shrink-0"></div>
+                                                    <p className="text-gray-300 text-lg leading-relaxed">{bullet}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="absolute bottom-4 right-4 flex items-center gap-2">
+                                            <span className="text-xs font-bold text-gray-600">NEON VENTURES</span>
+                                            <div className="w-4 h-4 bg-neon-blue rounded-sm"></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
                 </div>

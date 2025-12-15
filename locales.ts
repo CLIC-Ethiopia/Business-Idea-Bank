@@ -166,6 +166,7 @@ interface LocaleStrings {
     roadmap: string;
     sourcing: string;
     riskReport: string;
+    pitchDeck: string;
   };
   industries: Record<string, string>;
   canvasSections: Record<string, string>;
@@ -225,12 +226,17 @@ interface LocaleStrings {
     genBtn: string;
     phase: string;
   };
+  pitchDeck: {
+    tabTitle: string;
+    genBtn: string;
+    downloadPdf: string;
+  };
   upvote: {
-    count: string;
-    tooltip: string;
-    sort: string;
-    sortNew: string;
-    sortPopular: string;
+        count: string;
+        tooltip: string;
+        sort: string;
+        sortNew: string;
+        sortPopular: string;
   };
   supplier: {
     tabTitle: string;
@@ -256,6 +262,7 @@ interface LocaleStrings {
     financialsFail: string;
     roadmapFail: string;
     riskReportFail: string;
+    pitchDeckFail: string;
   }
 }
 
@@ -444,7 +451,8 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       financials: "Estimating Financial Data...",
       roadmap: "Constructing Mission Timeline...",
       sourcing: "Locating Verified Suppliers...",
-      riskReport: "Analyzing Credit Risk Models..."
+      riskReport: "Analyzing Credit Risk Models...",
+      pitchDeck: "Generating Pitch Deck Assets..."
     },
     industries: {
       'agri': 'Agriculture & Farming',
@@ -528,6 +536,11 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       genBtn: "Generate Execution Roadmap",
       phase: "Phase"
     },
+    pitchDeck: {
+      tabTitle: "Pitch Deck",
+      genBtn: "Generate AI Pitch Deck",
+      downloadPdf: "Download Deck (PDF)"
+    },
     upvote: {
         count: "Upvotes",
         tooltip: "Validate this idea (Signal Demand)",
@@ -573,7 +586,8 @@ ${user}`
       stressTestFail: "Simulation failed. Neural link unstable.",
       financialsFail: "Could not generate estimates.",
       roadmapFail: "Timeline construction failed.",
-      riskReportFail: "Risk Analysis Model failed to converge."
+      riskReportFail: "Risk Analysis Model failed to converge.",
+      pitchDeckFail: "Pitch Deck generation failed."
     }
   },
   am: {
@@ -760,7 +774,8 @@ ${user}`
       financials: "የፋይናንስ መረጃን በማምጣት ላይ...",
       roadmap: "የተልዕኮ ጊዜን በመገንባት ላይ...",
       sourcing: "የተረጋገጡ አቅራቢዎችን በመፈለግ ላይ...",
-      riskReport: "የብድር ስጋት ሞዴሎችን በመተንተን ላይ..."
+      riskReport: "የብድር ስጋት ሞዴሎችን በመተንተን ላይ...",
+      pitchDeck: "የዝግጅት አቀራረብ ንብረቶችን በማመንጨት ላይ..."
     },
     industries: {
       'agri': 'ግብርና እና እርሻ',
@@ -844,6 +859,11 @@ ${user}`
       genBtn: "የተግባር ፍኖተ ካርታን ያመንጩ",
       phase: "ምዕራፍ"
     },
+    pitchDeck: {
+      tabTitle: "የዝግጅት አቀራረብ",
+      genBtn: "AI የዝግጅት አቀራረብን ያመንጩ",
+      downloadPdf: "አቀራረቡን አውርድ (PDF)"
+    },
     upvote: {
         count: "ድጋፎች",
         tooltip: "ይህንን ሀሳብ ያረጋግጡ (የፍላጎት ምልክት)",
@@ -889,7 +909,8 @@ ${user}`
       stressTestFail: "ማስመሰል አልተሳካም።",
       financialsFail: "ግምቶችን ማመንጨት አልተቻለም።",
       roadmapFail: "የጊዜ ሰሌዳ ግንባታ አልተሳካም።",
-      riskReportFail: "የብድር ስጋት ትንተና አልተሳካም."
+      riskReportFail: "የብድር ስጋት ትንተና አልተሳካም።",
+      pitchDeckFail: "የዝግጅት አቀራረብ ማመንጨት አልተሳካም።"
     }
   }
 };

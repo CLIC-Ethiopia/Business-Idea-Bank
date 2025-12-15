@@ -84,6 +84,16 @@ export interface RoadmapPhase {
 
 export type Roadmap = RoadmapPhase[];
 
+export interface PitchDeckSlide {
+  title: string;
+  subtitle: string;
+  bullets: string[];
+}
+
+export interface PitchDeck {
+  slides: PitchDeckSlide[];
+}
+
 export interface BusinessCanvas {
   keyPartners: string[];
   keyActivities: string[];

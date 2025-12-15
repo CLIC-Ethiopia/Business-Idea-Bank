@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, CreditRiskReport, LoanApplication } from "../types";
+import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, CreditRiskReport, LoanApplication, PitchDeck } from "../types";
 import { fetchMachineImage } from "./googleSearchService";
 
 const apiKey = process.env.API_KEY || '';
@@ -95,6 +95,26 @@ const roadmapSchema: Schema = {
         required: ["phaseName", "duration", "steps"]
     }
 }
+
+// Schema for Pitch Deck
+const pitchDeckSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    slides: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING, description: "Slide Title (e.g., The Problem)" },
+          subtitle: { type: Type.STRING, description: "A punchy subtitle or statistic" },
+          bullets: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-4 concise points" }
+        },
+        required: ["title", "subtitle", "bullets"]
+      }
+    }
+  },
+  required: ["slides"]
+};
 
 // Schema for Business Canvas
 const canvasSchema: Schema = {
@@ -469,6 +489,51 @@ export const generateCanvas = async (idea: BusinessIdea, language: Language): Pr
     console.error("Error generating canvas:", error);
     return null;
   }
+};
+
+export const generatePitchDeck = async (idea: BusinessIdea, language: Language): Promise<PitchDeck | null> => {
+    try {
+        const langInstruction = language === 'am' 
+            ? "IMPORTANT: Provide all text content in Amharic language. Keep the JSON structure and keys in English."
+            : "Provide content in English.";
+
+        const prompt = `
+            Act as a venture capital consultant. Create a persuasive 5-slide pitch deck for this business:
+            Business: ${idea.businessTitle}
+            Machine: ${idea.machineName}
+            Description: ${idea.description}
+            Revenue Potential: ${idea.potentialRevenue}
+
+            Generate content for exactly these 5 slides:
+            1. Title Slide (Hook)
+            2. The Problem & Solution
+            3. Market Opportunity & Competition
+            4. Business Model & Revenue
+            5. The Ask & Roadmap
+
+            For each slide, provide a Title, a Subtitle (punchy statistic or claim), and 3-4 Bullet Points.
+
+            ${langInstruction}
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: pitchDeckSchema,
+                temperature: 0.7
+            }
+        });
+
+        if (response.text) {
+            return JSON.parse(response.text) as PitchDeck;
+        }
+        return null;
+    } catch (error) {
+        console.error("Error generating pitch deck:", error);
+        return null;
+    }
 };
 
 export const generateCreditRiskReport = async (
