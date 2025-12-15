@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, NeonText, LoadingScan } from './NeonUI';
-import { User, BusinessIdea, Industry, UserProfile, LoanApplication, CreditRiskReport } from '../types';
+import { User, BusinessIdea, Industry, UserProfile, LoanApplication, CreditRiskReport, AnalyticsData } from '../types';
 import { INDUSTRIES } from '../constants';
 import { supabase } from '../services/supabaseClient';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 interface UserDashboardProps {
   user: User;
@@ -198,6 +199,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
   const [dbIdeas, setDbIdeas] = useState<BusinessIdea[]>([]);
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
+  const [activeTab, setActiveTab] = useState<'database' | 'analytics'>('database');
   const [formData, setFormData] = useState<Partial<BusinessIdea> & { rawSkills?: string, rawOperationalReqs?: string }>({
       platformSource: 'Alibaba',
       priceRange: '',
@@ -207,10 +209,91 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
       rawOperationalReqs: ''
   });
   const [isEditing, setIsEditing] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [liveLogs, setLiveLogs] = useState<string[]>([]);
 
   useEffect(() => {
       fetchIdeas();
   }, []);
+
+  // Simulate real-time analytics data generation based on DB state or Filler
+  useEffect(() => {
+      if (activeTab === 'analytics') {
+          // Generate Industry Distribution
+          let distData: { name: string; value: number; color: string }[] = [];
+          const colors = ['#00d4ff', '#ff00ff', '#0aff0a', '#bc13fe', '#f9f871', '#ff4d4d'];
+
+          if (dbIdeas.length > 0) {
+              const industryCounts: Record<string, number> = {};
+              dbIdeas.forEach(idea => {
+                  const ind = idea.industryId || 'custom';
+                  industryCounts[ind] = (industryCounts[ind] || 0) + 1;
+              });
+              distData = Object.entries(industryCounts).map(([name, value], i) => ({
+                  name: t.industries[name] || name,
+                  value: value,
+                  color: colors[i % colors.length]
+              }));
+          } else {
+              // FILLER DATA if DB is empty (Simulating a populated system)
+              distData = [
+                  { name: 'Agriculture', value: 35, color: '#00d4ff' },
+                  { name: 'Manufacturing', value: 25, color: '#ff00ff' },
+                  { name: 'Services', value: 20, color: '#0aff0a' },
+                  { name: 'Tech', value: 15, color: '#bc13fe' },
+                  { name: 'Waste Mgmt', value: 5, color: '#f9f871' },
+              ];
+          }
+
+          // Mock Weekly Activity (Always show robust filler for visualization)
+          const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+          const activityData = days.map(d => ({
+              name: d,
+              scans: Math.floor(Math.random() * 50) + 20,
+              saves: Math.floor(Math.random() * 15) + 5
+          }));
+
+          // Mock Trending Keywords
+          const keywords = [
+              { text: "Plastic Recycling", value: 98 },
+              { text: "Vertical Farming", value: 85 },
+              { text: "CNC Laser", value: 72 },
+              { text: "Coffee Roaster", value: 65 },
+              { text: "Drone Delivery", value: 55 },
+              { text: "Solar Bakery", value: 48 },
+              { text: "Mobile Car Wash", value: 42 },
+              { text: "3D Printing", value: 35 }
+          ];
+
+          setAnalyticsData({
+              industryDistribution: distData,
+              weeklyActivity: activityData,
+              trendingKeywords: keywords
+          });
+
+          // Start Live Logs Simulation
+          const actions = ["scanned", "saved idea", "generated canvas", "exported PDF", "requested funding"];
+          const sectors = INDUSTRIES.map(i => i.name);
+          
+          // Initial filler logs
+          setLiveLogs([
+              `[${new Date().toLocaleTimeString()}] SYSTEM_INIT: Analytics Module Online`,
+              `[${new Date().toLocaleTimeString()}] NETWORK: 1,240 Nodes Connected`,
+              `[${new Date().toLocaleTimeString()}] DB_SYNC: Connection Stable`
+          ]);
+
+          const interval = setInterval(() => {
+              const action = actions[Math.floor(Math.random() * actions.length)];
+              const sector = sectors[Math.floor(Math.random() * sectors.length)];
+              const userHash = Math.random().toString(36).substring(7).toUpperCase();
+              const log = `[${new Date().toLocaleTimeString()}] OPERATIVE_${userHash} ${action} in ${sector}`;
+              
+              setLiveLogs(prev => [log, ...prev].slice(0, 8)); // Keep last 8 logs
+          }, 2000);
+
+          return () => clearInterval(interval);
+      }
+  }, [activeTab, dbIdeas]);
 
   const fetchIdeas = async () => {
       setLoading(true);
@@ -346,7 +429,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
         <StatCard label={t.dashboard.activeSessions} value="12" color="green" />
       </div>
 
-      {/* Management Area */}
+      {/* Tabs */}
+      <div className="flex gap-4 mb-6 border-b border-gray-800 pb-1">
+          <button 
+            onClick={() => setActiveTab('database')}
+            className={`px-4 py-2 font-bold uppercase tracking-wider text-sm transition-colors ${activeTab === 'database' ? 'text-neon-blue border-b-2 border-neon-blue' : 'text-gray-500 hover:text-white'}`}
+          >
+              {t.admin.tabs.database}
+          </button>
+          <button 
+            onClick={() => setActiveTab('analytics')}
+            className={`px-4 py-2 font-bold uppercase tracking-wider text-sm transition-colors ${activeTab === 'analytics' ? 'text-neon-pink border-b-2 border-neon-pink' : 'text-gray-500 hover:text-white'}`}
+          >
+              {t.admin.tabs.analytics}
+          </button>
+      </div>
+
+      {activeTab === 'database' ? (
+      /* Database Management Area */
       <NeonCard color="blue" hoverEffect={false} className="min-h-[500px]">
           <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-800">
              <h3 className="text-xl font-bold text-neon-blue uppercase tracking-wider">
@@ -474,6 +574,138 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ user, onAddIdea,
               </form>
           )}
       </NeonCard>
+      ) : (
+      /* Global Intelligence Analytics Area */
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-[fadeIn_0.5s_ease-out]">
+          
+          {/* Sector Popularity (Pie Chart) */}
+          <div className="lg:col-span-1">
+              <NeonCard color="pink" hoverEffect={false} className="h-full">
+                  <h3 className="text-neon-pink font-bold uppercase mb-4 text-sm tracking-wider border-b border-gray-800 pb-2">
+                      {t.admin.analytics.sectorPop}
+                  </h3>
+                  <div className="h-64">
+                      {analyticsData && (
+                          <ResponsiveContainer width="100%" height="100%">
+                              <PieChart>
+                                  <Pie
+                                      data={analyticsData.industryDistribution}
+                                      cx="50%"
+                                      cy="50%"
+                                      innerRadius={60}
+                                      outerRadius={80}
+                                      paddingAngle={5}
+                                      dataKey="value"
+                                  >
+                                      {analyticsData.industryDistribution.map((entry, index) => (
+                                          <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                                      ))}
+                                  </Pie>
+                                  <Tooltip 
+                                      contentStyle={{ backgroundColor: '#121212', border: '1px solid #333', borderRadius: '4px' }}
+                                      itemStyle={{ color: '#fff', fontSize: '12px' }}
+                                  />
+                              </PieChart>
+                          </ResponsiveContainer>
+                      )}
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                      {analyticsData?.industryDistribution.map((item, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: item.color }}></div>
+                              <span className="text-gray-400 truncate">{item.name}</span>
+                          </div>
+                      ))}
+                  </div>
+              </NeonCard>
+          </div>
+
+          {/* Activity Timeline (Area Chart) */}
+          <div className="lg:col-span-2">
+              <NeonCard color="blue" hoverEffect={false} className="h-full">
+                  <h3 className="text-neon-blue font-bold uppercase mb-4 text-sm tracking-wider border-b border-gray-800 pb-2">
+                      {t.admin.analytics.activity}
+                  </h3>
+                  <div className="h-64">
+                      {analyticsData && (
+                          <ResponsiveContainer width="100%" height="100%">
+                              <AreaChart data={analyticsData.weeklyActivity}>
+                                  <defs>
+                                      <linearGradient id="colorScans" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="5%" stopColor="#00d4ff" stopOpacity={0.8}/>
+                                          <stop offset="95%" stopColor="#00d4ff" stopOpacity={0}/>
+                                      </linearGradient>
+                                      <linearGradient id="colorSaves" x1="0" y1="0" x2="0" y2="1">
+                                          <stop offset="5%" stopColor="#bc13fe" stopOpacity={0.8}/>
+                                          <stop offset="95%" stopColor="#bc13fe" stopOpacity={0}/>
+                                      </linearGradient>
+                                  </defs>
+                                  <XAxis dataKey="name" stroke="#666" tick={{fontSize: 10}} />
+                                  <YAxis stroke="#666" tick={{fontSize: 10}} />
+                                  <Tooltip 
+                                      contentStyle={{ backgroundColor: '#121212', border: '1px solid #333' }}
+                                      labelStyle={{ color: '#aaa' }}
+                                  />
+                                  <Area type="monotone" dataKey="scans" stroke="#00d4ff" fillOpacity={1} fill="url(#colorScans)" name={t.admin.analytics.scans} />
+                                  <Area type="monotone" dataKey="saves" stroke="#bc13fe" fillOpacity={1} fill="url(#colorSaves)" name={t.admin.analytics.saves} />
+                              </AreaChart>
+                          </ResponsiveContainer>
+                      )}
+                  </div>
+              </NeonCard>
+          </div>
+
+          {/* Trending Keywords (Word Cloud Simulation) */}
+          <div className="lg:col-span-2">
+              <NeonCard color="green" hoverEffect={false} className="h-full">
+                  <h3 className="text-neon-green font-bold uppercase mb-4 text-sm tracking-wider border-b border-gray-800 pb-2">
+                      {t.admin.analytics.keywords}
+                  </h3>
+                  <div className="flex flex-wrap gap-3">
+                      {analyticsData?.trendingKeywords.map((kw, idx) => (
+                          <div 
+                              key={idx}
+                              className={`
+                                  px-4 py-2 rounded-full border border-gray-800 
+                                  bg-gray-900/50 text-white
+                                  hover:border-neon-green hover:text-neon-green hover:scale-105 transition-all cursor-default
+                              `}
+                              style={{ 
+                                  fontSize: `${Math.max(0.8, kw.value / 40)}rem`,
+                                  opacity: Math.max(0.5, kw.value / 100)
+                              }}
+                          >
+                              {kw.text}
+                          </div>
+                      ))}
+                  </div>
+              </NeonCard>
+          </div>
+
+          {/* Live Live Logs */}
+          <div className="lg:col-span-1">
+              <NeonCard color="purple" hoverEffect={false} className="h-full flex flex-col">
+                  <div className="flex items-center gap-2 mb-4 border-b border-gray-800 pb-2">
+                      <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                      <h3 className="text-white font-bold uppercase text-sm tracking-wider">
+                          {t.admin.analytics.liveLog}
+                      </h3>
+                  </div>
+                  <div className="flex-grow overflow-hidden relative">
+                      <div className="space-y-2">
+                          {liveLogs.map((log, idx) => (
+                              <div key={idx} className="text-[10px] font-mono text-neon-blue truncate animate-[fadeIn_0.3s_ease-out]">
+                                  {log}
+                              </div>
+                          ))}
+                      </div>
+                      <div className="absolute bottom-0 left-0 w-full h-12 bg-gradient-to-t from-dark-card to-transparent pointer-events-none"></div>
+                  </div>
+              </NeonCard>
+          </div>
+
+      </div>
+      )}
     </div>
   );
 };

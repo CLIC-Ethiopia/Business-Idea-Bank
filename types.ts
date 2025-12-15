@@ -138,6 +138,12 @@ export interface CommunityPost {
   isLiked?: boolean;
 }
 
+export interface AnalyticsData {
+  industryDistribution: { name: string; value: number; color: string }[];
+  weeklyActivity: { name: string; scans: number; saves: number }[];
+  trendingKeywords: { text: string; value: number }[];
+}
+
 export enum AppState {
   LOGIN,
   DASHBOARD,

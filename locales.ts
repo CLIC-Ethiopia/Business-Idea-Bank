@@ -66,6 +66,20 @@ interface LocaleStrings {
     systemLogs: string;
     requestFunding: string;
   };
+  admin: {
+    tabs: {
+        database: string;
+        analytics: string;
+    };
+    analytics: {
+        sectorPop: string;
+        activity: string;
+        keywords: string;
+        liveLog: string;
+        scans: string;
+        saves: string;
+    }
+  };
   lender: {
       dashboardTitle: string;
       queue: string;
@@ -332,6 +346,20 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       recTag: "REC",
       systemLogs: "System Logs",
       requestFunding: "Request Funding"
+    },
+    admin: {
+        tabs: {
+            database: "Database Management",
+            analytics: "Global Intelligence"
+        },
+        analytics: {
+            sectorPop: "Sector Popularity Protocol",
+            activity: "Operative Activity (7 Days)",
+            keywords: "Trending Search Matrix",
+            liveLog: "Live Network Traffic",
+            scans: "Scans",
+            saves: "Saves"
+        }
     },
     lender: {
         dashboardTitle: "CREDIT RISK CONSOLE",
@@ -655,6 +683,20 @@ ${user}`
       recTag: "ምክር",
       systemLogs: "የስርዓት ምዝግብ ማስታወሻዎች",
       requestFunding: "የገንዘብ ድጋፍ ይጠይቁ"
+    },
+    admin: {
+        tabs: {
+            database: "Database Management",
+            analytics: "Global Intelligence"
+        },
+        analytics: {
+            sectorPop: "Sector Popularity Protocol",
+            activity: "Operative Activity (7 Days)",
+            keywords: "Trending Search Matrix",
+            liveLog: "Live Network Traffic",
+            scans: "Scans",
+            saves: "Saves"
+        }
     },
     lender: {
         dashboardTitle: "የብድር ስጋት መቆጣጠሪያ",
