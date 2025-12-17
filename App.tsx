@@ -8,6 +8,7 @@ import { Auth } from './components/Auth';
 import { UserDashboard, AdminDashboard, LenderDashboard } from './components/Dashboards';
 import { Community } from './components/Community';
 import { About } from './components/About';
+import { SimulationMode } from './components/SimulationMode';
 import { supabase } from './services/supabaseClient';
 import { ChatWidget } from './components/ChatWidget';
 // @ts-ignore
@@ -198,14 +199,17 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleGuestLogin = (role: 'admin' | 'lender' = 'admin') => {
+  const handleGuestLogin = (role: 'admin' | 'lender' | 'student' = 'admin') => {
+      const emailPrefix = role === 'lender' ? 'lender' : role === 'student' ? 'student' : 'guest';
+      const name = role === 'lender' ? 'Credit Officer' : role === 'student' ? 'Cadet' : 'Guest Operative';
+      
       const guestUser: User = {
           id: 'guest',
-          email: role === 'lender' ? 'lender@neon.com' : 'guest@neon.com',
-          name: role === 'lender' ? 'Credit Officer' : 'Guest Operative',
+          email: `${emailPrefix}@neon.com`,
+          name: name,
           role: role, 
           profile: {
-            name: role === 'lender' ? 'Credit Officer' : 'Guest Operative',
+            name: name,
             budget: '$1,000 - $5,000',
             skills: '',
             interests: '',
@@ -217,8 +221,11 @@ const App: React.FC = () => {
       };
       setCurrentUser(guestUser);
       setUserProfile(guestUser.profile!);
+      
       // Route based on role
-      setAppState(role === 'lender' ? AppState.LENDER_DASHBOARD : AppState.SELECT_INDUSTRY);
+      if (role === 'lender') setAppState(AppState.LENDER_DASHBOARD);
+      else if (role === 'student') setAppState(AppState.SIMULATION_MODE);
+      else setAppState(AppState.SELECT_INDUSTRY);
   };
 
   // 2. Fetch Profile & Saved Ideas when Session Exists
@@ -2012,6 +2019,24 @@ const App: React.FC = () => {
   // Auth Screen
   if (appState === AppState.LOGIN) {
     return <Auth t={t} error={error} onGuestLogin={handleGuestLogin} />;
+  }
+  
+  // NEW: Simulation Mode Screen
+  if (appState === AppState.SIMULATION_MODE && currentUser) {
+      return (
+          <div className="min-h-screen bg-black text-white font-sans selection:bg-neon-green selection:text-black">
+              {renderNavBar()}
+              <SimulationMode 
+                  user={currentUser} 
+                  language={language}
+                  onExit={() => {
+                      // Exit simulation logic: logout or return to home
+                      handleLogout(); 
+                  }}
+                  t={t}
+              />
+          </div>
+      );
   }
 
   // Dashboard Screen

@@ -131,7 +131,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  role: 'user' | 'admin' | 'lender';
+  role: 'user' | 'admin' | 'lender' | 'student';
   avatar?: string;
   profile?: UserProfile;
 }
@@ -167,7 +167,32 @@ export enum AppState {
   ABOUT,
   ADMIN_DASHBOARD,
   LENDER_DASHBOARD,
-  COMMUNITY
+  COMMUNITY,
+  SIMULATION_MODE
 }
 
 export type Language = 'en' | 'am';
+
+// --- Simulation / RPG Types ---
+
+export interface SimulationState {
+    turn: number; // Month 1-12
+    maxTurns: number;
+    cash: number;
+    morale: number; // 0-100
+    log: string[];
+    isGameOver: boolean;
+    gameResult?: 'Success' | 'Bankruptcy' | 'Burnout';
+}
+
+export interface SimulationEvent {
+    scenario: string;
+    choices: {
+        id: 'a' | 'b' | 'c';
+        label: string;
+        description: string;
+        cashImpact: number;
+        moraleImpact: number;
+        outcomeText: string;
+    }[];
+}

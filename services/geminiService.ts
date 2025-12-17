@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, CreditRiskReport, LoanApplication, PitchDeck, FundingMilestone } from "../types";
+import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, CreditRiskReport, LoanApplication, PitchDeck, FundingMilestone, SimulationEvent } from "../types";
 import { fetchMachineImage } from "./googleSearchService";
 
 const apiKey = process.env.API_KEY || '';
@@ -148,6 +148,30 @@ const canvasSchema: Schema = {
     "keyPartners", "keyActivities", "keyResources", "valuePropositions", 
     "customerRelationships", "channels", "customerSegments", "costStructure", "revenueStreams"
   ]
+};
+
+// Schema for Simulation Event
+const simulationEventSchema: Schema = {
+    type: Type.OBJECT,
+    properties: {
+        scenario: { type: Type.STRING, description: "A situational crisis or opportunity description." },
+        choices: {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    id: { type: Type.STRING, enum: ["a", "b", "c"] },
+                    label: { type: Type.STRING, description: "Short button label" },
+                    description: { type: Type.STRING, description: "Explanation of the choice risk/reward" },
+                    cashImpact: { type: Type.NUMBER, description: "Projected cash change (negative for cost, positive for gain)" },
+                    moraleImpact: { type: Type.NUMBER, description: "Projected morale change (-10 to +10)" },
+                    outcomeText: { type: Type.STRING, description: "What happens after this choice is made" }
+                },
+                required: ["id", "label", "description", "cashImpact", "moraleImpact", "outcomeText"]
+            }
+        }
+    },
+    required: ["scenario", "choices"]
 };
 
 export const generateIdeas = async (industry: string, language: Language): Promise<BusinessIdea[]> => {
@@ -661,6 +685,61 @@ export const generateCreditRiskReport = async (
         return null;
     }
 };
+
+// --- SIMULATION MODE ---
+
+export const generateSimulationEvent = async (
+    idea: BusinessIdea,
+    currentTurn: number,
+    currentCash: number,
+    language: Language
+): Promise<SimulationEvent | null> => {
+    try {
+        const langInstruction = language === 'am' 
+            ? "IMPORTANT: Provide all text content in Amharic language. Keep the JSON structure and keys in English."
+            : "Provide content in English.";
+
+        const prompt = `
+            Act as a Dungeon Master for a business simulation game called "NeonTycoon".
+            
+            Current Game State:
+            - Business: ${idea.businessTitle} (Machine: ${idea.machineName})
+            - Month: ${currentTurn} of 12
+            - Cash Available: $${currentCash}
+
+            Generate a challenging business scenario/event relevant to this specific business type.
+            The scenario could be an opportunity (viral marketing, bulk order) or a crisis (machine breakdown, supplier delay).
+
+            Provide 3 Choices for the player:
+            - Choice A: "Cheap/Risky" (Low cost, high risk of morale loss or future failure).
+            - Choice B: "Standard/Balanced" (Moderate cost, safe outcome).
+            - Choice C: "Expensive/Premium" (High cost, guaranteed success + morale boost).
+
+            For each choice, estimate the immediate Cash Impact (negative for cost, positive for revenue) and Morale Impact (-10 to +10).
+            
+            ${langInstruction}
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: simulationEventSchema,
+                temperature: 0.8
+            }
+        });
+
+        if (response.text) {
+            return JSON.parse(response.text) as SimulationEvent;
+        }
+        return null;
+
+    } catch (e) {
+        console.error("Sim Event Generation Error", e);
+        return null;
+    }
+}
 
 export const streamChat = async function* (
     history: { role: 'user' | 'model', parts: { text: string }[] }[],

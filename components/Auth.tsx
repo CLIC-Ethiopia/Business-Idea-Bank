@@ -5,7 +5,7 @@ import { supabase } from '../services/supabaseClient';
 interface AuthProps {
   t: any;
   error?: string | null;
-  onGuestLogin: (role?: 'admin' | 'lender') => void;
+  onGuestLogin: (role?: 'admin' | 'lender' | 'student') => void;
 }
 
 export const Auth: React.FC<AuthProps> = ({ t, error: propError, onGuestLogin }) => {
@@ -141,27 +141,27 @@ export const Auth: React.FC<AuthProps> = ({ t, error: propError, onGuestLogin })
 
         <div className="space-y-3">
             <button 
-              onClick={() => onGuestLogin('admin')}
-              className="w-full bg-transparent border border-neon-green text-neon-green font-bold py-3 rounded flex items-center justify-center hover:bg-neon-green hover:text-black transition-colors uppercase tracking-widest"
+              onClick={() => onGuestLogin('student')}
+              className="w-full bg-black border-2 border-neon-green text-neon-green font-bold py-3 rounded flex items-center justify-center hover:bg-neon-green hover:text-black transition-all uppercase tracking-widest shadow-[0_0_15px_rgba(10,255,10,0.3)] hover:shadow-[0_0_25px_rgba(10,255,10,0.6)]"
             >
-               {t.login.guestBtn}
+               🎓 ENTER NEON TYCOON (STUDENT MODE)
             </button>
 
-             <button 
-              onClick={() => onGuestLogin('lender')}
-              className="w-full bg-transparent border border-neon-yellow text-neon-yellow font-bold py-3 rounded flex items-center justify-center hover:bg-neon-yellow hover:text-black transition-colors uppercase tracking-widest"
-            >
-               {t.login.lenderBtn}
-            </button>
+            <div className="grid grid-cols-2 gap-3">
+                <button 
+                onClick={() => onGuestLogin('admin')}
+                className="w-full bg-transparent border border-gray-700 text-gray-400 text-xs font-bold py-3 rounded flex items-center justify-center hover:bg-gray-800 hover:text-white transition-colors uppercase tracking-widest"
+                >
+                {t.login.guestBtn}
+                </button>
 
-            <button 
-                onClick={() => socialLogin('google')}
-                disabled={isProcessing}
-                className="w-full bg-white text-black font-bold py-3 rounded flex items-center justify-center hover:bg-gray-200 transition-colors"
-            >
-               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24"><path fill="currentColor" d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z"/></svg>
-               {t.login.googleBtn}
-            </button>
+                <button 
+                onClick={() => onGuestLogin('lender')}
+                className="w-full bg-transparent border border-gray-700 text-neon-yellow text-xs font-bold py-3 rounded flex items-center justify-center hover:bg-neon-yellow hover:text-black transition-colors uppercase tracking-widest"
+                >
+                {t.login.lenderBtn}
+                </button>
+            </div>
         </div>
       </NeonCard>
     </div>
