@@ -199,9 +199,9 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleGuestLogin = (role: 'admin' | 'lender' | 'student' = 'admin') => {
-      const emailPrefix = role === 'lender' ? 'lender' : role === 'student' ? 'student' : 'guest';
-      const name = role === 'lender' ? 'Credit Officer' : role === 'student' ? 'Cadet' : 'Guest Operative';
+  const handleGuestLogin = (role: 'admin' | 'lender' | 'student' | 'user') => {
+      const emailPrefix = role === 'lender' ? 'lender' : role === 'student' ? 'student' : role === 'admin' ? 'admin' : 'guest';
+      const name = role === 'lender' ? 'Credit Officer' : role === 'student' ? 'Cadet' : role === 'admin' ? 'Super Admin' : 'Entrepreneur Operative';
       
       const guestUser: User = {
           id: 'guest',
@@ -225,6 +225,7 @@ const App: React.FC = () => {
       // Route based on role
       if (role === 'lender') setAppState(AppState.LENDER_DASHBOARD);
       else if (role === 'student') setAppState(AppState.SIMULATION_MODE);
+      else if (role === 'admin') setAppState(AppState.ADMIN_DASHBOARD);
       else setAppState(AppState.SELECT_INDUSTRY);
   };
 
@@ -265,13 +266,13 @@ const App: React.FC = () => {
     }
 
     // Auto-detect admin role from email for simplicity
-    const role = authUser.email?.toLowerCase().includes('admin') ? 'admin' : 'user';
+    const role = authUser.email?.toLowerCase().includes('admin') ? 'admin' : (authUser.user_metadata?.role || 'user');
 
     setCurrentUser({
       id: authUser.id,
       email: authUser.email,
       name: finalProfile.name,
-      role: role, 
+      role: role as any, 
       profile: finalProfile
     });
     
@@ -281,8 +282,11 @@ const App: React.FC = () => {
     // Fetch Saved Ideas
     fetchSavedIdeas(authUser.id);
 
-    // Move to selection screen if we were in login
-    setAppState((prev) => prev === AppState.LOGIN ? AppState.SELECT_INDUSTRY : prev);
+    // Move to appropriate screen
+    if (role === 'lender') setAppState(AppState.LENDER_DASHBOARD);
+    else if (role === 'student') setAppState(AppState.SIMULATION_MODE);
+    else if (role === 'admin') setAppState(AppState.ADMIN_DASHBOARD);
+    else setAppState(AppState.SELECT_INDUSTRY);
   };
 
   const fetchSavedIdeas = async (userId: string) => {
@@ -321,8 +325,12 @@ const App: React.FC = () => {
           await supabase.auth.signOut();
       }
       setCurrentUser(null);
+      setSelectedIndustry(null);
+      setIdeas([]);
+      setSelectedIdea(null);
+      setCanvas(null);
+      // Directly set the login state to ensure Step 1 of Auth is loaded immediately
       setAppState(AppState.LOGIN);
-      reset();
   };
 
   const handleSaveIdea = async (idea: BusinessIdea) => {
@@ -1032,10 +1040,13 @@ const App: React.FC = () => {
   const renderIndustrySelection = () => (
     <div className="container mx-auto px-4 py-12">
       <div className="flex justify-end mb-4 gap-4">
-        <NeonButton onClick={() => setAppState(AppState.USER_PROFILE)} color="green" className="flex items-center gap-2">
+        <button 
+          onClick={() => setAppState(AppState.USER_PROFILE)} 
+          className="flex items-center gap-2 bg-neon-green/10 border border-neon-green text-neon-green px-4 py-2 rounded-lg hover:bg-neon-green hover:text-black transition-all font-bold uppercase text-xs"
+        >
           <UserIcon />
           <span>{t.buildProfileBtn}</span>
-        </NeonButton>
+        </button>
       </div>
 
       <div className="text-center mb-16">
