@@ -149,6 +149,25 @@ export interface CommunityPost {
   isLiked?: boolean;
 }
 
+// --- Lab Network Types ---
+
+export interface LabNetworkNode {
+    id: string;
+    userName: string;
+    businessTitle: string;
+    industryId: string;
+    machineName: string;
+    x: number;
+    y: number;
+    isUser?: boolean;
+}
+
+export interface LabNetworkLink {
+    source: string;
+    target: string;
+    synergyType: string;
+}
+
 export interface AnalyticsData {
   industryDistribution: { name: string; value: number; color: string }[];
   weeklyActivity: { name: string; scans: number; saves: number }[];

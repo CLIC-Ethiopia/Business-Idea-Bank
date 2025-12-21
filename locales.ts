@@ -120,6 +120,17 @@ interface LocaleStrings {
     generalChannel: string;
     filterBy: string;
     noPosts: string;
+    tabs: {
+        feed: string;
+        network: string;
+    };
+    network: {
+        title: string;
+        desc: string;
+        partnerType: string;
+        synergyMatch: string;
+        viewDetails: string;
+    };
   };
   chat: {
     header: string;
@@ -425,7 +436,18 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       connectBtn: "Connect",
       generalChannel: "General Frequency",
       filterBy: "Filter Protocol",
-      noPosts: "No signals detected on this frequency."
+      noPosts: "No signals detected on this frequency.",
+      tabs: {
+          feed: "Signal Feed",
+          network: "Lab Network (B2B)"
+      },
+      network: {
+          title: "B2B Neural Network",
+          desc: "Visualizing synergistic dependencies between active Lab Operatives.",
+          partnerType: "Partner Type",
+          synergyMatch: "Synergy Match",
+          viewDetails: "View Partnership Intelligence"
+      }
     },
     chat: {
         header: "PROF. FAD AI",
@@ -787,7 +809,18 @@ ${user}`
       connectBtn: "ተገናኝ",
       generalChannel: "ጠቅላላ ድግግሞሽ",
       filterBy: "ማጣሪያ",
-      noPosts: "በዚህ ድግግሞሽ ላይ ምንም ምልክት የለም።"
+      noPosts: "በዚህ ድግግሞሽ ላይ ምንም ምልክት የለም።",
+      tabs: {
+          feed: "Signal Feed",
+          network: "Lab Network (B2B)"
+      },
+      network: {
+          title: "B2B Neural Network",
+          desc: "Visualizing synergistic dependencies between active Lab Operatives.",
+          partnerType: "Partner Type",
+          synergyMatch: "Synergy Match",
+          viewDetails: "View Partnership Intelligence"
+      }
     },
     chat: {
         header: "ፕሮፌሰር ፋድ AI",
