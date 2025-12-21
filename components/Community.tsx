@@ -41,8 +41,8 @@ export const Community: React.FC<CommunityProps> = ({ user, posts, onAddPost, on
     <div className="container mx-auto px-4 py-8 animate-[fadeIn_0.5s_ease-out]">
         <div className="mb-8 flex justify-between items-end">
             <div>
-                <h2 className="text-3xl font-bold text-white mb-2 tracking-tighter">
-                    <span className="text-neon-pink">NEON</span> HIVE
+                <h2 className="text-3xl font-bold text-white mb-2 tracking-tighter uppercase">
+                    <span className="text-neon-pink">FAD</span> connect
                 </h2>
                 <p className="text-gray-400 font-mono text-sm">{t.community.subtitle}</p>
             </div>

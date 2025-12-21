@@ -46,7 +46,7 @@ export const Auth: React.FC<AuthProps> = ({ t, error: propError, onGuestLogin })
     } catch (err: any) {
       console.error(err);
       if (err.message.includes("provider is not enabled")) {
-        setLocalError("Email login is not enabled in Supabase Dashboard. Try Guest Mode.");
+        setLocalError("Email login is not enabled. Try Guest Mode.");
       } else {
         setLocalError(err.message);
       }
@@ -55,32 +55,12 @@ export const Auth: React.FC<AuthProps> = ({ t, error: propError, onGuestLogin })
     }
   };
 
-  const socialLogin = async (provider: 'google' | 'facebook') => {
-    setIsProcessing(true);
-    setLocalError(null);
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: provider,
-      });
-      if (error) throw error;
-    } catch (err: any) {
-      console.error(err);
-      if (err.message.includes("provider is not enabled")) {
-        setLocalError(`${provider.toUpperCase()} login is not configured in Supabase. Enable it in Authentication > Providers.`);
-      } else {
-        setLocalError(err.message);
-      }
-    } finally {
-      setIsProcessing(false);
-    }
-  }
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen p-4">
       <div className="mb-8 text-center">
         <h1 className="text-5xl font-bold tracking-tighter mb-2">
-            <span className="text-white">NEON</span>
-            <span className="text-neon-blue">ID</span>
+            <span className="text-white">FAD</span>
+            <span className="text-neon-blue"> LAB</span>
         </h1>
         <p className="text-gray-400 font-mono text-sm tracking-widest uppercase">
             {t.login.subtitle}
@@ -144,7 +124,7 @@ export const Auth: React.FC<AuthProps> = ({ t, error: propError, onGuestLogin })
               onClick={() => onGuestLogin('student')}
               className="w-full bg-black border-2 border-neon-green text-neon-green font-bold py-3 rounded flex items-center justify-center hover:bg-neon-green hover:text-black transition-all uppercase tracking-widest shadow-[0_0_15px_rgba(10,255,10,0.3)] hover:shadow-[0_0_25px_rgba(10,255,10,0.6)]"
             >
-               🎓 ENTER NEON TYCOON (STUDENT MODE)
+               🎓 ENTER FAD VENTURE SIM
             </button>
 
             <div className="grid grid-cols-2 gap-3">

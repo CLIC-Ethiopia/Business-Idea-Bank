@@ -554,13 +554,13 @@ export const generateCanvas = async (idea: BusinessIdea, language: Language): Pr
       : "Provide content in English.";
 
     const prompt = `
-      Create a detailed Business Model Canvas for the following business idea:
+      Create a detailed Business Model Blueprint for the following business idea:
       Machine: ${idea.machineName}
       Business: ${idea.businessTitle}
       Description: ${idea.description}
       
       ${langInstruction}
-      Provide 3-5 bullet points for each section of the canvas.
+      Provide 3-5 bullet points for each section of the blueprint.
     `;
 
     const response = await ai.models.generateContent({
@@ -578,7 +578,7 @@ export const generateCanvas = async (idea: BusinessIdea, language: Language): Pr
     }
     return null;
   } catch (error) {
-    console.error("Error generating canvas:", error);
+    console.error("Error generating blueprint:", error);
     return null;
   }
 };
@@ -700,7 +700,7 @@ export const generateSimulationEvent = async (
             : "Provide content in English.";
 
         const prompt = `
-            Act as a Dungeon Master for a business simulation game called "NeonTycoon".
+            Act as a Dungeon Master for a business simulation game called "FAD VENTURE SIM".
             
             Current Game State:
             - Business: ${idea.businessTitle} (Machine: ${idea.machineName})
@@ -721,13 +721,13 @@ export const generateSimulationEvent = async (
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: simulationEventSchema,
-                temperature: 0.8
-            }
+          model: 'gemini-2.5-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+            responseSchema: simulationEventSchema,
+            temperature: 0.8
+          }
         });
 
         if (response.text) {
@@ -754,13 +754,13 @@ export const streamChat = async function* (
         history: history,
         config: {
             systemInstruction: `
-            You are "Prof. Fad", an eccentric, high-energy, futuristic AI business consultant for the NeonVentures app.
+            You are "Prof. Fad", an eccentric, high-energy, futuristic AI business consultant for the Fad Business Lab app.
             Your goal is to help users find machine-based business ideas and navigate the app.
             
             Personality:
-            - Use cyberpunk slang occasionally (e.g., "operative", "uplink", "synapse").
+            - Use cyberpunk lab slang occasionally (e.g., "operative", "uplink", "synapse", "blueprint", "vial").
             - Be concise and punchy. Maximum 2-3 sentences per response unless asked for detail.
-            - Extremely encouraging but realistic about business risks.
+            - Extremely encouraging but realistic about business risks in the Fad Lab.
             
             Context:
             ${context}
@@ -770,7 +770,7 @@ export const streamChat = async function* (
             If the user asks about the app, guide them to:
             1. Select an industry to scan.
             2. Or build a profile for personalized matches.
-            3. View details and business canvases for specific ideas.
+            3. View details and business blueprints for specific ventures.
             `
         }
     });

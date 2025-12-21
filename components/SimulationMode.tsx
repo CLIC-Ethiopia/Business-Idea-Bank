@@ -91,8 +91,8 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
         morale: 100,
         log: [
             `[SYSTEM]: User ${user.name} logged in.`,
-            "[SYSTEM]: Simulation Protocol Initiated.",
-            "[SYSTEM]: Waiting for business selection..."
+            "[SYSTEM]: Fad Simulation Protocol Initiated.",
+            "[SYSTEM]: Waiting for venture selection..."
         ],
         isGameOver: false
     });
@@ -136,7 +136,7 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
         setGameState('PLAYING');
         setSimState(prev => ({
             ...prev,
-            log: [...prev.log, `[GAME]: Business selected: ${idea.businessTitle}`, `[GAME]: Starting Year 1. Month 1.`]
+            log: [...prev.log, `[GAME]: Venture selected: ${idea.businessTitle}`, `[GAME]: Starting Month 1.`]
         }));
         // Initial Event
         triggerTurn(1, 10000);
@@ -222,8 +222,8 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
 
     const renderSetup = () => (
         <div className="flex flex-col items-center justify-center min-h-screen p-4 max-w-2xl mx-auto text-center animate-[fadeIn_0.5s_ease-out]">
-            <h1 className="text-6xl font-bold text-neon-green font-orbitron mb-2 tracking-tighter drop-shadow-[0_0_10px_rgba(10,255,10,0.5)]">NEON TYCOON</h1>
-            <p className="text-gray-400 mb-12 font-mono uppercase tracking-widest text-sm">Educational Business Simulation Protocol v1.0</p>
+            <h1 className="text-6xl font-bold text-neon-green font-orbitron mb-2 tracking-tighter drop-shadow-[0_0_10px_rgba(10,255,10,0.5)]">FAD VENTURE SIM</h1>
+            <p className="text-gray-400 mb-12 font-mono uppercase tracking-widest text-sm">Educational Venture Simulation Protocol v1.0</p>
             
             <NeonCard color="green" className="w-full text-left p-8 border-2 border-neon-green bg-black" hoverEffect={false}>
                 <div className="mb-6">
@@ -250,13 +250,13 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
                         ))}
                     </div>
                     <p className="mt-4 text-xs text-gray-400 font-mono border-l-2 border-gray-600 pl-2">
-                        {archetype === 'Hacker' && "BONUS: Optimization Code. Technology upgrades cost 20% less."}
-                        {archetype === 'Hustler' && "BONUS: Smooth Talker. Revenue events generate 20% more cash."}
-                        {archetype === 'Maker' && "BONUS: Iron Will. Morale loss reduced by 50%."}
+                        {archetype === 'Hacker' && "BONUS: Lab Optimization. Technology upgrades cost 20% less."}
+                        {archetype === 'Hustler' && "BONUS: Market Smooth Talker. Revenue events generate 20% more cash."}
+                        {archetype === 'Maker' && "BONUS: Lab Resilience. Morale loss reduced by 50%."}
                     </p>
                 </div>
                 <NeonButton fullWidth color="green" onClick={handleStartSetup} disabled={!avatarName}>
-                    INITIALIZE SIMULATION &gt;&gt;
+                    INITIALIZE FAD VENTURE SIM &gt;&gt;
                 </NeonButton>
             </NeonCard>
         </div>
@@ -265,12 +265,12 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
     const renderPickIdea = () => (
         <div className="container mx-auto px-4 py-12">
             <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-neon-green font-orbitron mb-2">SELECT TARGET BUSINESS</h2>
-                <p className="text-gray-500 font-mono text-xs">SCANNING SECTOR: LIGHT MANUFACTURING</p>
+                <h2 className="text-3xl font-bold text-neon-green font-orbitron mb-2">SELECT TARGET VENTURE</h2>
+                <p className="text-gray-500 font-mono text-xs">SCANNING LAB DATABASE: LIGHT MANUFACTURING</p>
             </div>
             
             {loadingIdeas ? (
-                <LoadingScan text="ANALYZING MARKET OPPORTUNITIES..." />
+                <LoadingScan text="ANALYZING LAB OPPORTUNITIES..." />
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {simIdeas.map((idea, idx) => (
@@ -290,7 +290,7 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
                                     <span className="text-white">{idea.priceRange}</span>
                                 </div>
                                 <div className="text-center bg-gray-900 text-neon-green text-xs font-bold uppercase py-2 rounded border border-gray-700 group-hover:bg-neon-green group-hover:text-black transition-colors">
-                                    START SIMULATION
+                                    START VENTURE SIM
                                 </div>
                             </div>
                         </div>
@@ -318,7 +318,7 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
                 </div>
                 <div className="w-1/3 max-w-md">
                     <div className="flex justify-between text-[10px] text-gray-500 mb-1 uppercase tracking-widest">
-                        <span>Founder Morale</span>
+                        <span>Lab Morale</span>
                         <span>{simState.morale}%</span>
                     </div>
                     <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden border border-gray-700">
@@ -346,7 +346,7 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
                 ))}
                 {loadingEvent && (
                     <div className="text-neon-green animate-pulse mt-4">
-                        &gt; AI DUNGEON MASTER GENERATING SCENARIO...
+                        &gt; FAD LAB AI GENERATING VENTURE SCENARIO...
                     </div>
                 )}
             </div>
@@ -357,7 +357,7 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
                     <div className="max-w-5xl mx-auto animate-[fadeIn_0.3s_ease-out]">
                         <h3 className="text-white text-md font-bold mb-6 uppercase tracking-widest border-b border-gray-700 pb-2 flex justify-between">
                             <span>DECISION REQUIRED</span>
-                            <span className="text-neon-green text-xs">AI GENERATED EVENT</span>
+                            <span className="text-neon-green text-xs">FAD LAB AI EVENT</span>
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {currentEvent.choices.map((choice, i) => (
@@ -388,8 +388,8 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
             
             <div className="text-xl md:text-2xl text-white mb-12 max-w-2xl font-light">
                 {simState.gameResult === 'Bankruptcy' && "Capital reserves depleted. In business, cash flow is oxygen. You suffocated."}
-                {simState.gameResult === 'Burnout' && "Founder morale hit critical levels. You burned out before the business could take off. Mental health is an asset."}
-                {simState.gameResult === 'Success' && "You survived the critical first year! The business is stable, and you have proven your worth."}
+                {simState.gameResult === 'Burnout' && "Lab morale hit critical levels. You burned out before the venture could take off. Mental health is an asset."}
+                {simState.gameResult === 'Success' && "You survived the critical first year! Your Fad venture is stable, and you have proven your worth."}
             </div>
 
             <div className="bg-gray-900 border border-gray-700 p-8 rounded-xl max-w-xl w-full mb-12 text-left font-mono text-sm shadow-2xl">
@@ -414,12 +414,12 @@ export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, la
                         maxTurns: 12,
                         cash: 10000,
                         morale: 100,
-                        log: ["System reset...", "New simulation initialized."],
+                        log: ["Lab reset...", "New venture simulation initialized."],
                         isGameOver: false
                     });
                     setGameState('SETUP');
                 }}>
-                    RESTART SIMULATION
+                    RESTART FAD VENTURE SIM
                 </NeonButton>
                 <button onClick={onExit} className="text-gray-500 hover:text-white underline uppercase tracking-widest text-xs font-bold">
                     Exit to Main Menu

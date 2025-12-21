@@ -11,9 +11,9 @@ export const About: React.FC<AboutProps> = ({ t, onBack }) => {
     <div className="container mx-auto px-4 py-12 max-w-4xl animate-[fadeIn_0.5s_ease-out]">
       {/* Header */}
       <div className="mb-12 text-center">
-        <h1 className="text-5xl font-bold mb-4 tracking-tighter">
+        <h1 className="text-5xl font-bold mb-4 tracking-tighter uppercase">
             <span className="text-white">ABOUT</span>
-            <span className="text-neon-blue"> NEON</span>
+            <span className="text-neon-blue"> FAD LAB</span>
         </h1>
         <p className="text-gray-400 max-w-2xl mx-auto font-light text-lg">{t.about.intro}</p>
       </div>
