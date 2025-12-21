@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, BusinessIdea, SimulationState, SimulationEvent, Language } from '../types';
-import { NeonCard, NeonButton, LoadingScan } from './NeonUI';
-import { generateIdeas, generateSimulationEvent } from '../services/geminiService';
+import { User, Language } from '../types';
+import { NeonCard, NeonButton } from './NeonUI';
+import { JUNIOR_KITS, JUNIOR_CREW, JuniorKit, JuniorCrew, JuniorAsset } from '../services/juniorSimData';
+import { streamChat } from '../services/geminiService';
 
 interface SimulationModeProps {
     user: User;
@@ -10,429 +11,424 @@ interface SimulationModeProps {
     language: Language;
 }
 
-// Fallback data in case API fails or returns empty
-const FALLBACK_IDEAS: BusinessIdea[] = [
-    {
-        id: 'sim-1',
-        machineName: '3D Printer Fleet',
-        businessTitle: 'Rapid Prototyping Hub',
-        description: 'A local manufacturing hub producing custom parts for engineers and hobbyists using high-speed 3D printers.',
-        priceRange: '$3,500',
-        platformSource: 'Amazon',
-        potentialRevenue: '$5,000/mo'
-    },
-    {
-        id: 'sim-2',
-        machineName: 'Laser Engraver 50W',
-        businessTitle: 'Custom Gift Studio',
-        description: 'Personalized engraving service for wood, leather, and metal items. High margin personalized gifts.',
-        priceRange: '$2,800',
-        platformSource: 'Alibaba',
-        potentialRevenue: '$4,500/mo'
-    },
-    {
-        id: 'sim-3',
-        machineName: 'Vinyl Cutter Pro',
-        businessTitle: 'Vehicle Branding Shop',
-        description: 'Design and apply vinyl wraps and decals for local delivery fleets and small businesses.',
-        priceRange: '$1,200',
-        platformSource: 'Amazon',
-        potentialRevenue: '$3,500/mo'
-    }
-];
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
 
-const FALLBACK_EVENT: SimulationEvent = {
-    scenario: "Unexpected Supply Chain Disruption! Your primary material supplier has halted shipments due to a raw material shortage.",
-    choices: [
-        {
-            id: 'a',
-            label: 'Pay Premium for Expedited Shipping',
-            description: 'Secure materials from a competitor at a 50% markup.',
-            cashImpact: -800,
-            moraleImpact: 5,
-            outcomeText: "You secured the materials, but your profit margins took a severe hit this month."
-        },
-        {
-            id: 'b',
-            label: 'Delay Orders',
-            description: 'Wait for the shortage to pass.',
-            cashImpact: 0,
-            moraleImpact: -15,
-            outcomeText: "Customers were unhappy with the delays. Your reputation and morale suffered."
-        },
-        {
-            id: 'c',
-            label: 'Pivot to Recycled Materials',
-            description: 'Try a cheaper, eco-friendly alternative.',
-            cashImpact: -200,
-            moraleImpact: 10,
-            outcomeText: "It was a gamble, but customers loved the eco-friendly angle! You saved cash."
-        }
-    ]
-};
-
-export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, language }) => {
-    const [gameState, setGameState] = useState<'SETUP' | 'PICK_IDEA' | 'PLAYING' | 'GAMEOVER'>('SETUP');
+export const SimulationMode: React.FC<SimulationModeProps> = ({ user, onExit, t, language }) => {
+    const [currentStep, setCurrentStep] = useState<Step>(1);
+    const [wallet, setWallet] = useState(0);
+    const [businessName, setBusinessName] = useState('');
+    const [selectedKit, setSelectedKit] = useState<JuniorKit | null>(null);
+    const [selectedCrew, setSelectedCrew] = useState<JuniorCrew | null>(null);
+    const [selectedMachine, setSelectedMachine] = useState<JuniorAsset | null>(null);
+    const [selectedSupplier, setSelectedSupplier] = useState<JuniorAsset | null>(null);
+    const [selectedMarket, setSelectedMarket] = useState<JuniorAsset | null>(null);
+    const [isProfFadTyping, setIsProfFadTyping] = useState(false);
+    const [profFadMessage, setProfFadMessage] = useState("Greetings, Cadet! I am Prof. Fad. Ready to launch your first Lab Venture?");
     
-    // Character Setup
-    const [avatarName, setAvatarName] = useState(user.name || '');
-    const [archetype, setArchetype] = useState<'Hacker' | 'Hustler' | 'Maker'>('Hacker');
+    const steps = [
+        "Select Business", "Legal Reg", "Raise Funds", "Hire Crew", 
+        "Buy Machine", "Find Supplier", "Find Market", "Launch!", "Success"
+    ];
 
-    // Game Data
-    const [selectedSimIdea, setSelectedSimIdea] = useState<BusinessIdea | null>(null);
-    const [simIdeas, setSimIdeas] = useState<BusinessIdea[]>([]);
-    const [loadingIdeas, setLoadingIdeas] = useState(false);
-    
-    // Core Loop State
-    const [simState, setSimState] = useState<SimulationState>({
-        turn: 1,
-        maxTurns: 12,
-        cash: 10000,
-        morale: 100,
-        log: [
-            `[SYSTEM]: User ${user.name} logged in.`,
-            "[SYSTEM]: Fad Simulation Protocol Initiated.",
-            "[SYSTEM]: Waiting for venture selection..."
-        ],
-        isGameOver: false
-    });
-    
-    const [currentEvent, setCurrentEvent] = useState<SimulationEvent | null>(null);
-    const [loadingEvent, setLoadingEvent] = useState(false);
-    const logContainerRef = useRef<HTMLDivElement>(null);
-
-    // Auto-scroll log
-    useEffect(() => {
-        if (logContainerRef.current) {
-            logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
-        }
-    }, [simState.log, currentEvent]);
-
-    const handleStartSetup = () => {
-        setGameState('PICK_IDEA');
-        fetchSimIdeas();
-    };
-
-    const fetchSimIdeas = async () => {
-        setLoadingIdeas(true);
-        try {
-            // Attempt AI generation
-            const ideas = await generateIdeas("Light Manufacturing", language);
-            if (ideas && ideas.length > 0) {
-                setSimIdeas(ideas.slice(0, 3));
-            } else {
-                setSimIdeas(FALLBACK_IDEAS);
-            }
-        } catch (e) {
-            console.error("Simulation Idea Fetch Error", e);
-            setSimIdeas(FALLBACK_IDEAS);
-        } finally {
-            setLoadingIdeas(false);
-        }
-    };
-
-    const selectIdea = (idea: BusinessIdea) => {
-        setSelectedSimIdea(idea);
-        setGameState('PLAYING');
-        setSimState(prev => ({
-            ...prev,
-            log: [...prev.log, `[GAME]: Venture selected: ${idea.businessTitle}`, `[GAME]: Starting Month 1.`]
-        }));
-        // Initial Event
-        triggerTurn(1, 10000);
-    };
-
-    const triggerTurn = async (turn: number, cash: number) => {
-        if (!selectedSimIdea) return;
-        setLoadingEvent(true);
-        setCurrentEvent(null);
-
-        try {
-            const event = await generateSimulationEvent(selectedSimIdea, turn, cash, language);
-            if (event) {
-                setCurrentEvent(event);
-                setSimState(prev => ({
-                    ...prev,
-                    log: [...prev.log, `[MONTH ${turn}]: ${event.scenario}`]
-                }));
-            } else {
-                throw new Error("No event generated");
-            }
-        } catch (e) {
-            // Fallback Event
-            console.warn("Using fallback event");
-            setCurrentEvent(FALLBACK_EVENT);
-            setSimState(prev => ({
-                ...prev,
-                log: [...prev.log, `[MONTH ${turn}]: ${FALLBACK_EVENT.scenario}`]
-            }));
-        } finally {
-            setLoadingEvent(false);
-        }
-    };
-
-    const handleChoice = (choice: SimulationEvent['choices'][0]) => {
-        // Apply Archetype Bonuses
-        let finalCashImpact = choice.cashImpact;
-        let finalMoraleImpact = choice.moraleImpact;
-
-        if (archetype === 'Hacker' && choice.id === 'a') finalCashImpact = Math.floor(finalCashImpact * 0.8); // 20% discount on safe choices
-        if (archetype === 'Hustler' && finalCashImpact > 0) finalCashImpact = Math.floor(finalCashImpact * 1.2); // 20% bonus on gains
-        if (archetype === 'Maker' && finalMoraleImpact < 0) finalMoraleImpact = Math.floor(finalMoraleImpact * 0.5); // 50% resilience
-
-        const newCash = simState.cash + finalCashImpact;
-        const newMorale = Math.min(100, Math.max(0, simState.morale + finalMoraleImpact));
-        const newTurn = simState.turn + 1;
-
-        // Log the outcome
-        const logEntry = `> DECISION: ${choice.label} \n> RESULT: ${choice.outcomeText} \n> UPDATE: Cash ${finalCashImpact >= 0 ? '+' : ''}${finalCashImpact} | Morale ${finalMoraleImpact >= 0 ? '+' : ''}${finalMoraleImpact}`;
+    const handleProfFadAdvice = async () => {
+        setIsProfFadTyping(true);
+        const context = `The student is currently at Step ${currentStep}: ${steps[currentStep-1]}. 
+        Business: ${selectedKit?.title || 'None'}. 
+        Crew: ${selectedCrew?.name || 'None'}. 
+        Wallet: $${wallet}.`;
         
-        let gameOver = false;
-        let result: SimulationState['gameResult'];
-
-        if (newCash <= 0) {
-            gameOver = true;
-            result = 'Bankruptcy';
-        } else if (newMorale <= 0) {
-            gameOver = true;
-            result = 'Burnout';
-        } else if (newTurn > simState.maxTurns) {
-            gameOver = true;
-            result = 'Success';
-        }
-
-        setSimState(prev => ({
-            ...prev,
-            cash: newCash,
-            morale: newMorale,
-            turn: newTurn,
-            log: [...prev.log, logEntry],
-            isGameOver: gameOver,
-            gameResult: result
-        }));
-
-        if (!gameOver) {
-            setTimeout(() => triggerTurn(newTurn, newCash), 1000); // Slight delay for pacing
-        } else {
-            setGameState('GAMEOVER');
+        const prompt = `Give me a short, encouraging hint (1-2 sentences) for this current step. Use kid-friendly science/lab words.`;
+        
+        try {
+            let fullResponse = "";
+            const stream = streamChat([], prompt, context, language);
+            for await (const chunk of stream) {
+                fullResponse += chunk;
+                setProfFadMessage(fullResponse);
+            }
+        } catch (e) {
+            setProfFadMessage("Keep going, Operative! You are doing great!");
+        } finally {
+            setIsProfFadTyping(false);
         }
     };
 
-    // --- RENDER HELPERS ---
+    // Step Actions
+    const nextStep = () => setCurrentStep(prev => (prev + 1) as Step);
 
-    const renderSetup = () => (
-        <div className="flex flex-col items-center justify-center min-h-screen p-4 max-w-2xl mx-auto text-center animate-[fadeIn_0.5s_ease-out]">
-            <h1 className="text-6xl font-bold text-neon-green font-orbitron mb-2 tracking-tighter drop-shadow-[0_0_10px_rgba(10,255,10,0.5)]">FAD VENTURE SIM</h1>
-            <p className="text-gray-400 mb-12 font-mono uppercase tracking-widest text-sm">Educational Venture Simulation Protocol v1.0</p>
-            
-            <NeonCard color="green" className="w-full text-left p-8 border-2 border-neon-green bg-black" hoverEffect={false}>
-                <div className="mb-6">
-                    <label className="text-neon-green font-bold font-mono uppercase text-sm mb-2 block">Operative Name</label>
-                    <input 
-                        type="text" 
-                        className="w-full bg-gray-900 border border-gray-700 text-white p-3 rounded font-mono focus:border-neon-green outline-none"
-                        value={avatarName}
-                        onChange={(e) => setAvatarName(e.target.value)}
-                        placeholder="Enter name..."
-                    />
-                </div>
-                <div className="mb-8">
-                    <label className="text-neon-green font-bold font-mono uppercase text-sm mb-2 block">Select Archetype</label>
-                    <div className="grid grid-cols-3 gap-4">
-                        {['Hacker', 'Hustler', 'Maker'].map(arch => (
-                            <button
-                                key={arch}
-                                onClick={() => setArchetype(arch as any)}
-                                className={`p-4 border rounded font-bold uppercase text-xs sm:text-sm transition-all ${archetype === arch ? 'bg-neon-green text-black border-neon-green' : 'bg-transparent text-gray-500 border-gray-700 hover:border-gray-500'}`}
-                            >
-                                {arch}
-                            </button>
-                        ))}
-                    </div>
-                    <p className="mt-4 text-xs text-gray-400 font-mono border-l-2 border-gray-600 pl-2">
-                        {archetype === 'Hacker' && "BONUS: Lab Optimization. Technology upgrades cost 20% less."}
-                        {archetype === 'Hustler' && "BONUS: Market Smooth Talker. Revenue events generate 20% more cash."}
-                        {archetype === 'Maker' && "BONUS: Lab Resilience. Morale loss reduced by 50%."}
-                    </p>
-                </div>
-                <NeonButton fullWidth color="green" onClick={handleStartSetup} disabled={!avatarName}>
-                    INITIALIZE FAD VENTURE SIM &gt;&gt;
-                </NeonButton>
-            </NeonCard>
-        </div>
-    );
+    const selectKit = (kit: JuniorKit) => {
+        setSelectedKit(kit);
+        setProfFadMessage(`Excellent choice! ${kit.title} has high potential in the Lab Hive.`);
+        nextStep();
+    };
 
-    const renderPickIdea = () => (
-        <div className="container mx-auto px-4 py-12">
-            <div className="text-center mb-8">
-                <h2 className="text-3xl font-bold text-neon-green font-orbitron mb-2">SELECT TARGET VENTURE</h2>
-                <p className="text-gray-500 font-mono text-xs">SCANNING LAB DATABASE: LIGHT MANUFACTURING</p>
-            </div>
-            
-            {loadingIdeas ? (
-                <LoadingScan text="ANALYZING LAB OPPORTUNITIES..." />
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {simIdeas.map((idea, idx) => (
-                        <div 
-                            key={idx} 
-                            onClick={() => selectIdea(idea)}
-                            className="bg-black border-2 border-gray-800 hover:border-neon-green p-6 rounded cursor-pointer transition-all hover:-translate-y-2 group flex flex-col h-full"
-                        >
-                            <div className="text-4xl mb-4 group-hover:scale-110 transition-transform text-center">🏭</div>
-                            <h3 className="text-xl font-bold text-white mb-2">{idea.businessTitle}</h3>
-                            <div className="text-neon-green text-xs font-mono mb-2">{idea.machineName}</div>
-                            <p className="text-gray-500 text-xs font-mono mb-6 flex-grow leading-relaxed">{idea.description}</p>
-                            
-                            <div className="border-t border-gray-800 pt-4 mt-auto">
-                                <div className="flex justify-between text-xs text-gray-400 mb-2">
-                                    <span>Startup:</span>
-                                    <span className="text-white">{idea.priceRange}</span>
-                                </div>
-                                <div className="text-center bg-gray-900 text-neon-green text-xs font-bold uppercase py-2 rounded border border-gray-700 group-hover:bg-neon-green group-hover:text-black transition-colors">
-                                    START VENTURE SIM
-                                </div>
-                            </div>
+    const handleLegal = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!businessName.trim()) return;
+        setProfFadMessage(`"${businessName}" is now a registered entity! Your license is active.`);
+        nextStep();
+    };
+
+    const addFunds = (amount: number, type: string) => {
+        setWallet(amount);
+        setProfFadMessage(`BZZZT! $${amount} injected into your wallet via ${type}. Use it wisely!`);
+        nextStep();
+    };
+
+    const selectCrew = (crew: JuniorCrew) => {
+        setSelectedCrew(crew);
+        setProfFadMessage(`${crew.name} has joined your squad. Passive buff activated: ${crew.buff}`);
+        nextStep();
+    };
+
+    const buyMachine = (machine: JuniorAsset) => {
+        if (wallet < (machine.cost || 0)) {
+            setProfFadMessage("Insufficient credits! Did you spend your grant on virtual snacks?");
+            return;
+        }
+        setWallet(prev => prev - (machine.cost || 0));
+        setSelectedMachine(machine);
+        setProfFadMessage(`The ${machine.name} is installed at your workbench. It's beautiful!`);
+        nextStep();
+    };
+
+    const selectSupplier = (supplier: JuniorAsset) => {
+        setSelectedSupplier(supplier);
+        setProfFadMessage(`Supply chain uplink established with ${supplier.name}. We have fuel!`);
+        nextStep();
+    };
+
+    const selectMarket = (market: JuniorAsset) => {
+        setSelectedMarket(market);
+        setProfFadMessage(`Target identified: ${market.name}. They are hungry for your product!`);
+        nextStep();
+    };
+
+    const finalizeLaunch = () => {
+        const baseProfit = Math.floor(Math.random() * 500) + 500;
+        const multiplier = selectedCrew?.id === 'maya' ? 1.2 : 1.0;
+        const finalProfit = Math.floor(baseProfit * multiplier);
+        setWallet(prev => prev + finalProfit);
+        setProfFadMessage(`MISSION ACCOMPLISHED! Sales are booming! You earned $${finalProfit} in profit.`);
+        nextStep();
+    };
+
+    // --- SUB-RENDERERS ---
+
+    const renderProgressBar = () => (
+        <div className="w-full max-w-4xl mx-auto mb-12">
+            <div className="flex justify-between items-center relative">
+                <div className="absolute top-1/2 left-0 w-full h-1 bg-gray-800 -z-10 -translate-y-1/2"></div>
+                {steps.map((s, i) => (
+                    <div key={i} className="flex flex-col items-center">
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold border-2 transition-all duration-500 ${currentStep > i + 1 ? 'bg-neon-green border-neon-green text-black scale-110 shadow-neon-green' : currentStep === i + 1 ? 'bg-neon-blue border-neon-blue text-black scale-125 shadow-neon-blue animate-pulse' : 'bg-black border-gray-700 text-gray-500'}`}>
+                            {i + 1}
                         </div>
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-
-    const renderGameLoop = () => (
-        <div className="h-screen flex flex-col bg-black text-green-500 font-mono overflow-hidden">
-            {/* HUD */}
-            <div className="border-b-2 border-neon-green bg-gray-900 p-4 flex justify-between items-center shadow-[0_0_20px_rgba(10,255,10,0.2)] z-10 relative">
-                <div className="flex gap-8">
-                    <div>
-                        <span className="text-gray-500 text-[10px] uppercase tracking-widest block">Liquid Assets</span>
-                        <div className={`text-2xl font-bold ${simState.cash < 2000 ? 'text-red-500 animate-pulse' : 'text-white'}`}>
-                            ${simState.cash.toLocaleString()}
-                        </div>
-                    </div>
-                    <div>
-                        <span className="text-gray-500 text-[10px] uppercase tracking-widest block">Timeline</span>
-                        <div className="text-2xl font-bold text-white">Month {simState.turn} <span className="text-gray-600 text-sm">/ {simState.maxTurns}</span></div>
-                    </div>
-                </div>
-                <div className="w-1/3 max-w-md">
-                    <div className="flex justify-between text-[10px] text-gray-500 mb-1 uppercase tracking-widest">
-                        <span>Lab Morale</span>
-                        <span>{simState.morale}%</span>
-                    </div>
-                    <div className="w-full bg-gray-800 h-2 rounded-full overflow-hidden border border-gray-700">
-                        <div 
-                            className={`h-full transition-all duration-500 ${simState.morale > 50 ? 'bg-neon-green' : 'bg-red-500'}`} 
-                            style={{width: `${simState.morale}%`}}
-                        ></div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Terminal Log */}
-            <div 
-                ref={logContainerRef}
-                className="flex-grow overflow-y-auto p-6 space-y-4 bg-black bg-opacity-90 relative"
-                style={{ 
-                    backgroundImage: 'linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.03), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.03))', 
-                    backgroundSize: '100% 4px, 6px 100%' 
-                }}
-            >
-                {simState.log.map((entry, i) => (
-                    <div key={i} className={`font-mono text-sm leading-relaxed ${entry.startsWith('>') ? 'text-yellow-500 pl-4 border-l border-yellow-500 whitespace-pre-wrap' : 'text-neon-green'}`}>
-                        {entry}
+                        <span className={`text-[8px] uppercase mt-2 font-bold tracking-tighter ${currentStep === i + 1 ? 'text-neon-blue' : 'text-gray-600'}`}>{s}</span>
                     </div>
                 ))}
-                {loadingEvent && (
-                    <div className="text-neon-green animate-pulse mt-4">
-                        &gt; FAD LAB AI GENERATING VENTURE SCENARIO...
+            </div>
+        </div>
+    );
+
+    const renderProfFad = () => (
+        <div className="fixed bottom-8 left-8 z-40 max-w-xs animate-[fadeIn_0.5s_ease-out]">
+            <div className="bg-dark-card border border-neon-yellow p-4 rounded-2xl relative shadow-2xl">
+                <div className="absolute -top-10 left-4 bg-neon-yellow text-black text-[10px] font-bold px-2 py-1 rounded uppercase tracking-widest">
+                    Prof. Fad Advisor
+                </div>
+                <div className="flex gap-4 items-start">
+                    <div className="text-4xl">🤖</div>
+                    <div>
+                        <p className={`text-xs text-yellow-100 font-mono leading-relaxed ${isProfFadTyping ? 'animate-pulse' : ''}`}>
+                            {profFadMessage}
+                        </p>
+                        <button 
+                            onClick={handleProfFadAdvice}
+                            className="mt-2 text-[9px] text-neon-blue hover:text-white uppercase font-bold tracking-widest flex items-center gap-1"
+                        >
+                            <span>Click for Hint</span> 💡
+                        </button>
                     </div>
-                )}
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="min-h-screen bg-black text-white p-4 font-sans selection:bg-neon-blue selection:text-black pb-32">
+            {/* Header */}
+            <div className="flex justify-between items-center mb-12 max-w-6xl mx-auto border-b border-gray-900 pb-4">
+                <div className="flex items-center gap-4">
+                    <div className="bg-neon-green text-black font-bold px-3 py-1 rounded-sm text-sm tracking-tighter font-orbitron">CADET MODE</div>
+                    <h2 className="text-xl font-bold font-orbitron tracking-widest">STUDENT VENTURE QUEST</h2>
+                </div>
+                <div className="flex items-center gap-8">
+                    <div className="text-right">
+                        <div className="text-[10px] text-gray-500 uppercase tracking-widest">Lab Credits</div>
+                        <div className="text-2xl font-bold text-neon-green font-mono">${wallet.toLocaleString()}</div>
+                    </div>
+                    <button onClick={onExit} className="text-xs text-gray-500 hover:text-white uppercase font-bold border border-gray-800 px-4 py-2 rounded">Abort Mission</button>
+                </div>
             </div>
 
-            {/* Action Deck */}
-            <div className="border-t-2 border-neon-green bg-gray-900 p-6 min-h-[300px]">
-                {currentEvent && !loadingEvent && (
-                    <div className="max-w-5xl mx-auto animate-[fadeIn_0.3s_ease-out]">
-                        <h3 className="text-white text-md font-bold mb-6 uppercase tracking-widest border-b border-gray-700 pb-2 flex justify-between">
-                            <span>DECISION REQUIRED</span>
-                            <span className="text-neon-green text-xs">FAD LAB AI EVENT</span>
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {currentEvent.choices.map((choice, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => handleChoice(choice)}
-                                    className="relative border border-gray-600 bg-black hover:bg-gray-800 hover:border-neon-green p-5 text-left transition-all group rounded flex flex-col h-full"
+            {renderProgressBar()}
+
+            <div className="max-w-5xl mx-auto animate-[fadeIn_0.5s_ease-out]">
+                
+                {/* STEP 1: CHOOSE BUSINESS */}
+                {currentStep === 1 && (
+                    <div className="space-y-8 text-center">
+                        <h1 className="text-4xl font-bold text-white uppercase tracking-tighter">Choose Your Starter Kit</h1>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {JUNIOR_KITS.map(kit => (
+                                <NeonCard 
+                                    key={kit.id} 
+                                    color="blue" 
+                                    onClick={() => selectKit(kit)}
+                                    className="group flex flex-col items-center p-8 border-2"
                                 >
-                                    <div className="absolute top-2 right-3 text-gray-700 font-bold text-4xl opacity-20 group-hover:opacity-40">{String.fromCharCode(65 + i)}</div>
-                                    <div className="text-neon-green font-bold mb-2 group-hover:text-white uppercase text-sm tracking-wider">
-                                        {choice.label}
+                                    <div className="text-6xl mb-6 group-hover:scale-110 transition-transform">{kit.icon}</div>
+                                    <h3 className="text-2xl font-bold text-white mb-2">{kit.title}</h3>
+                                    <p className="text-gray-400 text-sm mb-6 flex-grow">{kit.description}</p>
+                                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
+                                        <span className="text-gray-500">Difficulty:</span>
+                                        <span className={kit.difficulty === 'Easy' ? 'text-neon-green' : kit.difficulty === 'Medium' ? 'text-neon-yellow' : 'text-neon-pink'}>{kit.difficulty}</span>
                                     </div>
-                                    <div className="text-gray-400 text-xs leading-relaxed group-hover:text-gray-300">{choice.description}</div>
+                                </NeonCard>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 2: LEGAL REG */}
+                {currentStep === 2 && (
+                    <div className="max-w-xl mx-auto space-y-8">
+                        <div className="text-center">
+                            <h1 className="text-4xl font-bold text-white uppercase">Register Your Lab</h1>
+                            <p className="text-gray-500 mt-2">Every operative needs an official identity.</p>
+                        </div>
+                        <NeonCard color="green" hoverEffect={false} className="p-8">
+                            <form onSubmit={handleLegal} className="space-y-6">
+                                <div>
+                                    <label className="block text-neon-green text-xs font-bold uppercase tracking-widest mb-3">Venture Name</label>
+                                    <input 
+                                        autoFocus
+                                        type="text" 
+                                        value={businessName}
+                                        onChange={(e) => setBusinessName(e.target.value)}
+                                        placeholder="e.g. Neon Juicery..."
+                                        className="w-full bg-black border-2 border-neon-green text-2xl p-4 rounded text-white outline-none focus:shadow-neon-green"
+                                    />
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    {['Home Lab', 'School Yard', 'Public Market'].map(zone => (
+                                        <button key={zone} type="button" className="p-3 border border-gray-800 rounded text-[10px] uppercase font-bold text-gray-500 hover:border-white hover:text-white transition-colors">{zone}</button>
+                                    ))}
+                                </div>
+                                <NeonButton fullWidth color="green" type="submit">Stamp Official License</NeonButton>
+                            </form>
+                        </NeonCard>
+                    </div>
+                )}
+
+                {/* STEP 3: RAISE FUNDS */}
+                {currentStep === 3 && (
+                    <div className="max-w-3xl mx-auto space-y-8 text-center">
+                        <h1 className="text-4xl font-bold text-white uppercase">Power Up Your Wallet</h1>
+                        <p className="text-gray-500">Choose where your starting capital comes from.</p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <NeonCard color="yellow" onClick={() => addFunds(500, 'Family Grant')} className="p-6">
+                                <div className="text-4xl mb-4">🏠</div>
+                                <h3 className="font-bold text-white mb-2">Family Grant</h3>
+                                <div className="text-2xl font-bold text-neon-yellow mb-2">$500</div>
+                                <p className="text-xs text-gray-500">Easy funds, but you share chores!</p>
+                            </NeonCard>
+                            <NeonCard color="blue" onClick={() => addFunds(1000, 'Lab Scholarship')} className="p-6">
+                                <div className="text-4xl mb-4">🧪</div>
+                                <h3 className="font-bold text-white mb-2">Scholarship</h3>
+                                <div className="text-2xl font-bold text-neon-blue mb-2">$1,000</div>
+                                <p className="text-xs text-gray-500">Pass the quiz to unlock.</p>
+                            </NeonCard>
+                            <NeonCard color="pink" onClick={() => addFunds(1500, 'Crowdfunding')} className="p-6">
+                                <div className="text-4xl mb-4">🌍</div>
+                                <h3 className="font-bold text-white mb-2">Crowdfund</h3>
+                                <div className="text-2xl font-bold text-neon-pink mb-2">$1,500</div>
+                                <p className="text-xs text-gray-500">Get fans to support you!</p>
+                            </NeonCard>
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 4: HIRE CREW */}
+                {currentStep === 4 && (
+                    <div className="max-w-4xl mx-auto space-y-8 text-center">
+                        <h1 className="text-4xl font-bold text-white uppercase">Assemble Your Crew</h1>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {JUNIOR_CREW.map(crew => (
+                                <NeonCard key={crew.id} color="purple" onClick={() => selectCrew(crew)} className="p-6 flex flex-col items-center">
+                                    <div className="w-20 h-20 rounded-full bg-gray-900 border-2 border-neon-purple flex items-center justify-center text-4xl mb-4">
+                                        {crew.icon}
+                                    </div>
+                                    <h3 className="text-xl font-bold text-white">{crew.name}</h3>
+                                    <div className="text-xs text-neon-purple font-bold uppercase mb-4">{crew.role}</div>
+                                    <div className="bg-black/50 p-3 rounded text-[10px] text-gray-400 mb-6 flex-grow">
+                                        <div className="text-neon-green font-bold mb-1 uppercase">Special Buff:</div>
+                                        {crew.buff}
+                                    </div>
+                                    <NeonButton color="purple" fullWidth className="py-2 text-[10px]">Invite to Lab</NeonButton>
+                                </NeonCard>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 5: BUY MACHINE */}
+                {currentStep === 5 && selectedKit && (
+                    <div className="max-w-4xl mx-auto space-y-8 text-center">
+                        <h1 className="text-4xl font-bold text-white uppercase">Acquire Technology</h1>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {selectedKit.machines.map(m => (
+                                <NeonCard key={m.id} color="blue" onClick={() => buyMachine(m)} className="p-8 flex items-center gap-6 text-left">
+                                    <div className="text-6xl">{m.icon}</div>
+                                    <div className="flex-grow">
+                                        <h3 className="text-xl font-bold text-white mb-1">{m.name}</h3>
+                                        <p className="text-xs text-gray-500 mb-4">{m.description}</p>
+                                        <div className="text-2xl font-bold text-neon-blue font-mono">${m.cost}</div>
+                                    </div>
+                                    <div className="text-xs bg-gray-800 px-3 py-1 rounded font-bold uppercase hover:bg-neon-blue hover:text-black transition-colors">Buy</div>
+                                </NeonCard>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 6: FIND SUPPLIER */}
+                {currentStep === 6 && selectedKit && (
+                    <div className="max-w-4xl mx-auto space-y-8 text-center">
+                        <h1 className="text-4xl font-bold text-white uppercase">Material Sourcing</h1>
+                        <div className="bg-gray-900 border-2 border-gray-800 h-64 rounded-2xl relative overflow-hidden mb-8">
+                            {/* Simple Map Visualization */}
+                            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                                <div className="text-3xl animate-bounce">📍</div>
+                                <div className="text-[8px] bg-white text-black font-bold px-1 uppercase mt-1">My Lab</div>
+                            </div>
+                            {selectedKit.potentialSuppliers.map((s, i) => (
+                                <div 
+                                    key={s.id} 
+                                    onClick={() => selectSupplier(s)}
+                                    className={`absolute cursor-pointer group flex flex-col items-center ${i === 0 ? 'top-10 left-20' : 'bottom-10 right-20'}`}
+                                >
+                                    <div className="text-3xl group-hover:scale-125 transition-transform">{s.icon}</div>
+                                    <div className="text-[8px] text-neon-blue font-bold uppercase mt-1 opacity-0 group-hover:opacity-100">{s.name}</div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {selectedKit.potentialSuppliers.map(s => (
+                                <button key={s.id} onClick={() => selectSupplier(s)} className="p-4 border border-gray-800 rounded bg-black hover:border-neon-blue transition-all flex items-center gap-4">
+                                    <span className="text-3xl">{s.icon}</span>
+                                    <div className="text-left">
+                                        <div className="text-white font-bold">{s.name}</div>
+                                        <div className="text-[10px] text-gray-500">{s.description}</div>
+                                    </div>
                                 </button>
                             ))}
                         </div>
                     </div>
                 )}
+
+                {/* STEP 7: FIND MARKET */}
+                {currentStep === 7 && selectedKit && (
+                    <div className="max-w-4xl mx-auto space-y-8 text-center">
+                        <h1 className="text-4xl font-bold text-white uppercase">Identify Consumers</h1>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            {selectedKit.potentialMarkets.map(m => (
+                                <NeonCard key={m.id} color="pink" onClick={() => selectMarket(m)} className="p-8 flex flex-col items-center">
+                                    <div className="text-6xl mb-4">{m.icon}</div>
+                                    <h3 className="text-xl font-bold text-white mb-2">{m.name}</h3>
+                                    <p className="text-xs text-gray-500">{m.description}</p>
+                                    <div className="mt-6 w-full border-t border-gray-800 pt-4 text-[10px] text-neon-pink font-bold uppercase tracking-widest">Target Match: 98%</div>
+                                </NeonCard>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 8: SELL & LAUNCH */}
+                {currentStep === 8 && (
+                    <div className="max-w-2xl mx-auto space-y-12 text-center">
+                        <div className="animate-pulse">
+                            <h1 className="text-5xl font-bold text-white uppercase tracking-widest">System Ready</h1>
+                            <p className="text-neon-blue font-mono mt-4">Venture Launch Protocol Initialized</p>
+                        </div>
+
+                        <div className="bg-dark-card border-2 border-neon-blue p-8 rounded-2xl space-y-6">
+                            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+                                <span className="text-gray-500 uppercase text-xs">Venture:</span>
+                                <span className="text-white font-bold">{businessName}</span>
+                            </div>
+                            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+                                <span className="text-gray-500 uppercase text-xs">Operator:</span>
+                                <span className="text-neon-purple font-bold">{selectedCrew?.name}</span>
+                            </div>
+                            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+                                <span className="text-gray-500 uppercase text-xs">Asset:</span>
+                                <span className="text-neon-blue font-bold">{selectedMachine?.name}</span>
+                            </div>
+                            <div className="flex justify-between items-center pb-4">
+                                <span className="text-gray-500 uppercase text-xs">Target:</span>
+                                <span className="text-neon-pink font-bold">{selectedMarket?.name}</span>
+                            </div>
+
+                            <NeonButton fullWidth color="blue" onClick={finalizeLaunch} className="text-xl py-6 shadow-neon-blue animate-bounce">
+                                🚀 BLAST OFF & SELL!
+                            </NeonButton>
+                        </div>
+                    </div>
+                )}
+
+                {/* STEP 9: SUMMARY / SUCCESS */}
+                {currentStep === 9 && (
+                    <div className="max-w-4xl mx-auto space-y-12 text-center py-12 animate-[fadeIn_1s_ease-out]">
+                        <div className="text-7xl mb-8">🏆</div>
+                        <h1 className="text-6xl font-bold text-neon-green uppercase tracking-tighter">Mission Success</h1>
+                        <p className="text-xl text-white font-light">You survived your first business quest in the Fad Lab!</p>
+
+                        <div className="bg-white text-black p-12 rounded-none border-[12px] border-black inline-block relative">
+                            <div className="absolute top-4 left-4 text-xs font-bold border border-black px-2 uppercase">Official Doc</div>
+                            <div className="text-center">
+                                <div className="text-[10px] uppercase font-bold tracking-[0.3em] mb-4">Fad Venture Academy</div>
+                                <h2 className="text-4xl font-bold uppercase mb-2">CERTIFIED OPERATIVE</h2>
+                                <div className="w-48 h-0.5 bg-black mx-auto mb-6"></div>
+                                <p className="text-lg italic font-serif">This certifies that</p>
+                                <div className="text-3xl font-bold uppercase my-4 font-orbitron">{user.name}</div>
+                                <p className="text-lg italic font-serif">has successfully launched</p>
+                                <div className="text-2xl font-bold uppercase my-2">{businessName}</div>
+                                <div className="mt-8 flex justify-between items-end">
+                                    <div className="text-left">
+                                        <div className="text-[8px] uppercase">Final Wallet</div>
+                                        <div className="text-xl font-bold">${wallet.toLocaleString()}</div>
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-[8px] uppercase">Advisor Signature</div>
+                                        <div className="text-xl font-serif italic">Prof. Fad</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-12 flex gap-6 justify-center">
+                            <NeonButton color="green" onClick={() => setCurrentStep(1)}>Start New Quest</NeonButton>
+                            <button onClick={onExit} className="text-gray-500 hover:text-white underline uppercase font-bold text-xs tracking-widest">Return to Dashboard</button>
+                        </div>
+                    </div>
+                )}
+
             </div>
+
+            {currentStep < 9 && renderProfFad()}
         </div>
     );
-
-    const renderGameOver = () => (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-center p-4">
-            <h1 className={`text-6xl md:text-8xl font-bold mb-4 font-orbitron tracking-tighter ${simState.gameResult === 'Success' ? 'text-neon-green' : 'text-red-600'}`}>
-                {simState.gameResult === 'Success' ? 'MISSION SUCCESS' : 'GAME OVER'}
-            </h1>
-            
-            <div className="text-xl md:text-2xl text-white mb-12 max-w-2xl font-light">
-                {simState.gameResult === 'Bankruptcy' && "Capital reserves depleted. In business, cash flow is oxygen. You suffocated."}
-                {simState.gameResult === 'Burnout' && "Lab morale hit critical levels. You burned out before the venture could take off. Mental health is an asset."}
-                {simState.gameResult === 'Success' && "You survived the critical first year! Your Fad venture is stable, and you have proven your worth."}
-            </div>
-
-            <div className="bg-gray-900 border border-gray-700 p-8 rounded-xl max-w-xl w-full mb-12 text-left font-mono text-sm shadow-2xl">
-                <div className="flex justify-between mb-4 border-b border-gray-800 pb-2">
-                    <span className="text-gray-500 uppercase tracking-widest">Final Cash</span>
-                    <span className={`font-bold ${simState.cash > 0 ? 'text-neon-green' : 'text-red-500'}`}>${simState.cash.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between mb-4 border-b border-gray-800 pb-2">
-                    <span className="text-gray-500 uppercase tracking-widest">Survival Time</span>
-                    <span className="text-white font-bold">{Math.min(12, simState.turn)} Months</span>
-                </div>
-                <div className="flex justify-between">
-                    <span className="text-gray-500 uppercase tracking-widest">Archetype</span>
-                    <span className="text-neon-blue font-bold uppercase">{archetype}</span>
-                </div>
-            </div>
-
-            <div className="flex gap-6">
-                <NeonButton color="green" onClick={() => {
-                    setSimState({
-                        turn: 1,
-                        maxTurns: 12,
-                        cash: 10000,
-                        morale: 100,
-                        log: ["Lab reset...", "New venture simulation initialized."],
-                        isGameOver: false
-                    });
-                    setGameState('SETUP');
-                }}>
-                    RESTART FAD VENTURE SIM
-                </NeonButton>
-                <button onClick={onExit} className="text-gray-500 hover:text-white underline uppercase tracking-widest text-xs font-bold">
-                    Exit to Main Menu
-                </button>
-            </div>
-        </div>
-    );
-
-    switch (gameState) {
-        case 'SETUP': return renderSetup();
-        case 'PICK_IDEA': return renderPickIdea();
-        case 'PLAYING': return renderGameLoop();
-        case 'GAMEOVER': return renderGameOver();
-        default: return <div className="text-red-500 text-center mt-20">System Error: Invalid State</div>;
-    }
 };
