@@ -1,4 +1,3 @@
-
 export interface Industry {
   id: string;
   name: string;
@@ -36,21 +35,23 @@ export interface BusinessDetails {
   marketingQuickTip: string;
 }
 
+export interface FinancialEstimates {
+  initialInvestment: number;
+  monthlyFixedCosts: number;
+  costPerUnit: number;
+  rawMaterialCostPerUnit: number; // NEW: Supply Chain variable
+  laborCostPerMonth: number; // NEW: Human Capital variable
+  pricePerUnit: number;
+  estimatedMonthlySales: number;
+  currency: string;
+}
+
 export interface StressTestAnalysis {
   saturationLevel: 'Low' | 'Medium' | 'High';
   saturationReason: string;
   hiddenCosts: string[];
   failureMode: string;
   competitorEdge: string;
-}
-
-export interface FinancialEstimates {
-  initialInvestment: number;
-  monthlyFixedCosts: number;
-  costPerUnit: number;
-  pricePerUnit: number;
-  estimatedMonthlySales: number;
-  currency: string;
 }
 
 export interface CreditRiskReport {

@@ -223,6 +223,8 @@ interface LocaleStrings {
         investment: string;
         fixedCost: string;
         costPerUnit: string;
+        rawMaterial: string;
+        labor: string;
         pricePerUnit: string;
         estSales: string;
     };
@@ -569,7 +571,9 @@ export const TRANSLATIONS: Record<Language, LocaleStrings> = {
       labels: {
           investment: "Initial Investment (Machine + Setup)",
           fixedCost: "Monthly Fixed Costs (Rent, Marketing)",
-          costPerUnit: "Cost Per Unit (Material + Labor)",
+          costPerUnit: "Direct Utility Cost / Unit",
+          rawMaterial: "Raw Material Cost / Unit",
+          labor: "Monthly Labor/Staffing",
           pricePerUnit: "Selling Price Per Unit",
           estSales: "Est. Monthly Sales (Units)"
       },
@@ -890,7 +894,7 @@ ${user}`
       'custom': 'ለእርስዎ የተመረጡ'
     },
     canvasSections: {
-      keyPartners: "ቁልፍ አጋሮች",
+      keyPartners: "የንግድ አጋሮች",
       keyActivities: "ቁልፍ ተግባራት",
       keyResources: "ቁልፍ ግብዓቶች",
       valuePropositions: "የሚቀርቡ እሴቶች",
@@ -929,7 +933,9 @@ ${user}`
       labels: {
           investment: "መነሻ ካፒታል (ማሽን + ዝግጅት)",
           fixedCost: "ወርሃዊ ቋሚ ወጪዎች (ኪራይ ፣ ማስታወቂያ)",
-          costPerUnit: "አንድ ክፍል ወጪ (ቁሳቁስ + ጉልበት)",
+          costPerUnit: "የአገልግሎት ወጪ / ክፍል",
+          rawMaterial: "የጥሬ እቃ ወጪ / ክፍል",
+          labor: "ወርሃዊ የጉልበት ወጪ",
           pricePerUnit: "የመሸጫ ዋጋ",
           estSales: "የተገመተ ወርሃዊ ሽያጭ (ብዛት)"
       },

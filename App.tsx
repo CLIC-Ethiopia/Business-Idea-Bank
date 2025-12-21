@@ -914,9 +914,13 @@ const App: React.FC = () => {
           initialInvestment = basePrice + landedCost.shipping + duty + vat + landedCost.fees;
       }
       
-      const margin = financials.pricePerUnit - financials.costPerUnit;
-      const monthlyProfit = (margin * financials.estimatedMonthlySales) - financials.monthlyFixedCosts;
-      const breakEvenUnits = margin > 0 ? Math.ceil(financials.monthlyFixedCosts / margin) : Infinity;
+      const totalUnitCost = financials.costPerUnit + (financials.rawMaterialCostPerUnit || 0);
+      const margin = financials.pricePerUnit - totalUnitCost;
+      
+      const totalMonthlyFixed = financials.monthlyFixedCosts + (financials.laborCostPerMonth || 0);
+      const monthlyProfit = (margin * financials.estimatedMonthlySales) - totalMonthlyFixed;
+      
+      const breakEvenUnits = margin > 0 ? Math.ceil(totalMonthlyFixed / margin) : Infinity;
       const breakEvenMonths = monthlyProfit > 0 ? Math.ceil(initialInvestment / monthlyProfit) : Infinity;
 
       return { margin, monthlyProfit, breakEvenUnits, breakEvenMonths, adjustedInvestment: initialInvestment };
@@ -1642,7 +1646,7 @@ const App: React.FC = () => {
                             <div>
                                 <h4 className="text-gray-500 text-xs font-bold uppercase mb-4 border-b border-gray-800 pb-1">{t.roi.inputsTitle}</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
+                                    <div className="md:col-span-2">
                                         <label className="text-[10px] text-gray-400 uppercase">{t.roi.labels.investment}</label>
                                         <input 
                                             type="number" 
@@ -1661,12 +1665,30 @@ const App: React.FC = () => {
                                         />
                                     </div>
                                     <div>
+                                        <label className="text-[10px] text-gray-400 uppercase">{t.roi.labels.labor}</label>
+                                        <input 
+                                            type="number" 
+                                            value={financials.laborCostPerMonth || 0} 
+                                            onChange={(e) => setFinancials({...financials, laborCostPerMonth: Number(e.target.value)})}
+                                            className="w-full bg-black/30 border border-neon-purple rounded p-2 text-white text-sm"
+                                        />
+                                    </div>
+                                    <div>
                                         <label className="text-[10px] text-gray-400 uppercase">{t.roi.labels.costPerUnit}</label>
                                         <input 
                                             type="number" 
                                             value={financials.costPerUnit} 
                                             onChange={(e) => setFinancials({...financials, costPerUnit: Number(e.target.value)})}
                                             className="w-full bg-black/30 border border-gray-700 rounded p-2 text-white text-sm"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] text-gray-400 uppercase">{t.roi.labels.rawMaterial}</label>
+                                        <input 
+                                            type="number" 
+                                            value={financials.rawMaterialCostPerUnit || 0} 
+                                            onChange={(e) => setFinancials({...financials, rawMaterialCostPerUnit: Number(e.target.value)})}
+                                            className="w-full bg-black/30 border border-neon-blue rounded p-2 text-white text-sm"
                                         />
                                     </div>
                                     <div>
@@ -1678,17 +1700,14 @@ const App: React.FC = () => {
                                             className="w-full bg-black/30 border border-gray-700 rounded p-2 text-white text-sm"
                                         />
                                     </div>
-                                    <div className="md:col-span-2">
+                                    <div>
                                         <label className="text-[10px] text-gray-400 uppercase">{t.roi.labels.estSales}</label>
                                         <input 
-                                            type="range" 
-                                            min="0" 
-                                            max="1000" 
+                                            type="number" 
                                             value={financials.estimatedMonthlySales} 
                                             onChange={(e) => setFinancials({...financials, estimatedMonthlySales: Number(e.target.value)})}
-                                            className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                                            className="w-full bg-black/30 border border-gray-700 rounded p-2 text-white text-sm"
                                         />
-                                        <div className="text-right text-neon-green font-bold text-sm">{financials.estimatedMonthlySales} {t.roi.metrics.units}</div>
                                     </div>
                                 </div>
                             </div>

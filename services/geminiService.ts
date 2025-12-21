@@ -56,13 +56,15 @@ const financialEstimatesSchema: Schema = {
   type: Type.OBJECT,
   properties: {
     initialInvestment: { type: Type.NUMBER, description: "Total startup cost in USD (machine + permit + first month rent)" },
-    monthlyFixedCosts: { type: Type.NUMBER, description: "Rent, insurance, marketing in USD" },
-    costPerUnit: { type: Type.NUMBER, description: "Variable cost to produce one unit in USD (material + energy)" },
+    monthlyFixedCosts: { type: Type.NUMBER, description: "Rent, insurance, utilities, simple marketing in USD" },
+    costPerUnit: { type: Type.NUMBER, description: "Direct utility/processing cost per unit in USD (energy + machine maintenance portion)" },
+    rawMaterialCostPerUnit: { type: Type.NUMBER, description: "Sourcing cost for raw materials per unit in USD" },
+    laborCostPerMonth: { type: Type.NUMBER, description: "Monthly wages for 1-2 staff/operatives in USD" },
     pricePerUnit: { type: Type.NUMBER, description: "Selling price for one unit in USD" },
     estimatedMonthlySales: { type: Type.NUMBER, description: "Conservative number of units sold per month for a beginner" },
     currency: { type: Type.STRING, description: "Currency symbol, usually $" }
   },
-  required: ["initialInvestment", "monthlyFixedCosts", "costPerUnit", "pricePerUnit", "estimatedMonthlySales", "currency"]
+  required: ["initialInvestment", "monthlyFixedCosts", "costPerUnit", "rawMaterialCostPerUnit", "laborCostPerMonth", "pricePerUnit", "estimatedMonthlySales", "currency"]
 };
 
 // Schema for Funding Milestones
@@ -363,10 +365,8 @@ export const generateStressTest = async (idea: BusinessIdea, language: Language)
 
 export const generateFinancialEstimates = async (idea: BusinessIdea, language: Language): Promise<FinancialEstimates | null> => {
   try {
-    // Financials usually stay in numbers, so language mostly affects the currency context if needed, 
-    // but the schema asks for specific numbers.
     const prompt = `
-      Act as a financial analyst. Estimate conservative financial figures for this small business idea:
+      Act as a financial analyst. Estimate conservative financial figures for this small business idea, considering supply chain and human capital costs.
       Business: ${idea.businessTitle}
       Machine: ${idea.machineName}
       Description: ${idea.description}
@@ -374,9 +374,11 @@ export const generateFinancialEstimates = async (idea: BusinessIdea, language: L
       Provide realistic estimates for:
       1. Initial Investment (Machine cost + ~$500 setup).
       2. Monthly Fixed Costs (Rent, simple marketing, utilities).
-      3. Cost Per Unit (Material + Labor/Energy).
-      4. Selling Price Per Unit (Market average).
-      5. Estimated Monthly Sales (Conservative volume for a beginner).
+      3. Processing Cost Per Unit (Electricity + Maintenance portion).
+      4. Raw Material Cost Per Unit (Sourcing cost for consumables needed to make the product).
+      5. Monthly Labor/Staffing Cost (Estimated salary for 1 helper/operative).
+      6. Selling Price Per Unit (Market average).
+      7. Estimated Monthly Sales (Conservative volume for a beginner).
 
       Return numeric values in USD.
     `;
