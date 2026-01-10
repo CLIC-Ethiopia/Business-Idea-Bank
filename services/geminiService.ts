@@ -1,139 +1,102 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+
+import { GoogleGenAI, Type } from "@google/genai";
 import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language, StressTestAnalysis, FinancialEstimates, Roadmap, SourcingLink, CreditRiskReport, LoanApplication, PitchDeck, FundingMilestone, SimulationEvent } from "../types";
 import { fetchMachineImage } from "./googleSearchService";
+import { JuniorKit } from "./juniorSimData";
 
-const apiKey = process.env.API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
+// Initialize Gemini API with the recommended pattern
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-// Schema for generating Business Ideas
-const businessIdeaSchema: Schema = {
+// Schema for Junior Kits (Student Sim)
+const juniorKitSchema = {
   type: Type.ARRAY,
   items: {
     type: Type.OBJECT,
     properties: {
       id: { type: Type.STRING },
-      machineName: { type: Type.STRING, description: "Specific name of the machine or system found on Amazon/Alibaba" },
-      businessTitle: { type: Type.STRING, description: "Catchy title for the small business" },
-      description: { type: Type.STRING, description: "How the machine is used to make money. Must be at least two sentences long." },
-      priceRange: { type: Type.STRING, description: "Estimated cost of the machine e.g. $2,000 - $5,000" },
-      platformSource: { type: Type.STRING, enum: ['Alibaba', 'Amazon', 'Global Sources'] },
-      potentialRevenue: { type: Type.STRING, description: "Brief revenue potential estimation" }
+      title: { type: Type.STRING },
+      description: { type: Type.STRING },
+      icon: { type: Type.STRING, description: "A single emoji representing the business" },
+      industry: { type: Type.STRING },
+      difficulty: { type: Type.STRING },
+      machines: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            name: { type: Type.STRING },
+            description: { type: Type.STRING },
+            icon: { type: Type.STRING },
+            cost: { type: Type.NUMBER }
+          },
+          required: ["id", "name", "description", "icon", "cost"]
+        }
+      },
+      potentialSuppliers: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            name: { type: Type.STRING },
+            description: { type: Type.STRING },
+            icon: { type: Type.STRING }
+          },
+          required: ["id", "name", "description", "icon"]
+        }
+      },
+      potentialMarkets: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            id: { type: Type.STRING },
+            name: { type: Type.STRING },
+            description: { type: Type.STRING },
+            icon: { type: Type.STRING }
+          },
+          required: ["id", "name", "description", "icon"]
+        }
+      }
     },
-    required: ["id", "machineName", "businessTitle", "description", "priceRange", "platformSource", "potentialRevenue"],
-    propertyOrdering: ["id", "machineName", "businessTitle", "description", "priceRange", "platformSource", "potentialRevenue"]
+    required: ["id", "title", "description", "icon", "industry", "difficulty", "machines", "potentialSuppliers", "potentialMarkets"]
   }
 };
 
-// Schema for Business Details
-const businessDetailsSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    targetAudience: { type: Type.STRING, description: "Who are the customers?" },
-    operationalRequirements: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 key things needed to run it (space, power, license)" },
-    skillRequirements: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 key skills needed to operate the business" },
-    pros: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 Advantages" },
-    cons: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 Challenges" },
-    marketingQuickTip: { type: Type.STRING, description: "One actionable marketing tip" }
-  },
-  required: ["targetAudience", "operationalRequirements", "skillRequirements", "pros", "cons", "marketingQuickTip"]
-};
-
-// Schema for Stress Test
-const stressTestSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    saturationLevel: { type: Type.STRING, enum: ['Low', 'Medium', 'High'] },
-    saturationReason: { type: Type.STRING, description: "Brief explanation of saturation level" },
-    hiddenCosts: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 unexpected costs usually forgotten" },
-    failureMode: { type: Type.STRING, description: "The #1 specific reason this business fails" },
-    competitorEdge: { type: Type.STRING, description: "One tactic to beat established players" }
-  },
-  required: ["saturationLevel", "saturationReason", "hiddenCosts", "failureMode", "competitorEdge"]
-};
-
-// Schema for Financial Estimates
-const financialEstimatesSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    initialInvestment: { type: Type.NUMBER, description: "Total startup cost in USD (machine + permit + first month rent)" },
-    monthlyFixedCosts: { type: Type.NUMBER, description: "Rent, insurance, utilities, simple marketing in USD" },
-    costPerUnit: { type: Type.NUMBER, description: "Direct utility/processing cost per unit in USD (energy + machine maintenance portion)" },
-    rawMaterialCostPerUnit: { type: Type.NUMBER, description: "Sourcing cost for raw materials per unit in USD" },
-    laborCostPerMonth: { type: Type.NUMBER, description: "Monthly wages for 1-2 staff/operatives in USD" },
-    pricePerUnit: { type: Type.NUMBER, description: "Selling price for one unit in USD" },
-    estimatedMonthlySales: { type: Type.NUMBER, description: "Conservative number of units sold per month for a beginner" },
-    currency: { type: Type.STRING, description: "Currency symbol, usually $" }
-  },
-  required: ["initialInvestment", "monthlyFixedCosts", "costPerUnit", "rawMaterialCostPerUnit", "laborCostPerMonth", "pricePerUnit", "estimatedMonthlySales", "currency"]
-};
-
-// Schema for Funding Milestones
-const fundingMilestonesSchema: Schema = {
+// Schema for Business Ideas
+const businessIdeaSchema = {
   type: Type.ARRAY,
   items: {
     type: Type.OBJECT,
     properties: {
-      phaseName: { type: Type.STRING, description: "Name of the funding phase (e.g. Procurement)" },
-      description: { type: Type.STRING, description: "What the funds will be used for in this phase" },
-      amount: { type: Type.NUMBER, description: "Amount needed for this specific phase in USD" }
+      machineName: { type: Type.STRING },
+      businessTitle: { type: Type.STRING },
+      description: { type: Type.STRING },
+      priceRange: { type: Type.STRING },
+      platformSource: { type: Type.STRING },
+      potentialRevenue: { type: Type.STRING }
     },
-    required: ["phaseName", "description", "amount"]
+    required: ["machineName", "businessTitle", "description", "priceRange", "platformSource", "potentialRevenue"]
   }
 };
 
-// Schema for Credit Risk Report
-const creditRiskSchema: Schema = {
+// Schema for Business Details
+const businessDetailsSchema = {
   type: Type.OBJECT,
   properties: {
-    score: { type: Type.NUMBER, description: "Credit score 0-100" },
-    riskLevel: { type: Type.STRING, enum: ['Low', 'Moderate', 'High', 'Critical'] },
-    dscr: { type: Type.NUMBER, description: "Debt Service Coverage Ratio (e.g. 1.25)" },
-    ltv: { type: Type.NUMBER, description: "Loan to Value ratio percentage (e.g. 80)" },
-    strengths: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 key strengths of the application" },
-    weaknesses: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3 key weaknesses or risks" },
-    stipulations: { type: Type.ARRAY, items: { type: Type.STRING }, description: "Conditions for approval (e.g. higher down payment)" },
-    verdict: { type: Type.STRING, enum: ['Approved', 'Conditional', 'Rejected'] },
-    maxLoanAmount: { type: Type.NUMBER, description: "Maximum recommended loan amount in USD" }
+    targetAudience: { type: Type.STRING },
+    operationalRequirements: { type: Type.ARRAY, items: { type: Type.STRING } },
+    skillRequirements: { type: Type.ARRAY, items: { type: Type.STRING } },
+    pros: { type: Type.ARRAY, items: { type: Type.STRING } },
+    cons: { type: Type.ARRAY, items: { type: Type.STRING } },
+    marketingQuickTip: { type: Type.STRING }
   },
-  required: ["score", "riskLevel", "dscr", "ltv", "strengths", "weaknesses", "stipulations", "verdict", "maxLoanAmount"]
+  required: ["targetAudience", "operationalRequirements", "skillRequirements", "pros", "cons", "marketingQuickTip"]
 };
 
-// Schema for Roadmap
-const roadmapSchema: Schema = {
-    type: Type.ARRAY,
-    items: {
-        type: Type.OBJECT,
-        properties: {
-            phaseName: { type: Type.STRING, description: "Name of the phase, e.g. 'Month 1: Setup'"},
-            duration: { type: Type.STRING, description: "Duration, e.g. 'Week 1-4'"},
-            steps: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of 3 specific actionable tasks for this phase" }
-        },
-        required: ["phaseName", "duration", "steps"]
-    }
-}
-
-// Schema for Pitch Deck
-const pitchDeckSchema: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    slides: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          title: { type: Type.STRING, description: "Slide Title (e.g., The Problem)" },
-          subtitle: { type: Type.STRING, description: "A punchy subtitle or statistic" },
-          bullets: { type: Type.ARRAY, items: { type: Type.STRING }, description: "3-4 concise points" }
-        },
-        required: ["title", "subtitle", "bullets"]
-      }
-    }
-  },
-  required: ["slides"]
-};
-
-// Schema for Business Canvas
-const canvasSchema: Schema = {
+// Schema for Business Model Canvas
+const canvasSchema = {
   type: Type.OBJECT,
   properties: {
     keyPartners: { type: Type.ARRAY, items: { type: Type.STRING } },
@@ -146,34 +109,166 @@ const canvasSchema: Schema = {
     costStructure: { type: Type.ARRAY, items: { type: Type.STRING } },
     revenueStreams: { type: Type.ARRAY, items: { type: Type.STRING } }
   },
-  required: [
-    "keyPartners", "keyActivities", "keyResources", "valuePropositions", 
-    "customerRelationships", "channels", "customerSegments", "costStructure", "revenueStreams"
-  ]
+  required: ["keyPartners", "keyActivities", "keyResources", "valuePropositions", "customerRelationships", "channels", "customerSegments", "costStructure", "revenueStreams"]
+};
+
+// Schema for Stress Test Analysis
+const stressTestSchema = {
+  type: Type.OBJECT,
+  properties: {
+    saturationLevel: { type: Type.STRING },
+    saturationReason: { type: Type.STRING },
+    hiddenCosts: { type: Type.ARRAY, items: { type: Type.STRING } },
+    failureMode: { type: Type.STRING },
+    competitorEdge: { type: Type.STRING }
+  },
+  required: ["saturationLevel", "saturationReason", "hiddenCosts", "failureMode", "competitorEdge"]
+};
+
+// Schema for Financial Estimates
+const financialEstimatesSchema = {
+  type: Type.OBJECT,
+  properties: {
+    initialInvestment: { type: Type.NUMBER },
+    monthlyFixedCosts: { type: Type.NUMBER },
+    costPerUnit: { type: Type.NUMBER },
+    rawMaterialCostPerUnit: { type: Type.NUMBER },
+    laborCostPerMonth: { type: Type.NUMBER },
+    pricePerUnit: { type: Type.NUMBER },
+    estimatedMonthlySales: { type: Type.NUMBER },
+    currency: { type: Type.STRING }
+  },
+  required: ["initialInvestment", "monthlyFixedCosts", "costPerUnit", "rawMaterialCostPerUnit", "laborCostPerMonth", "pricePerUnit", "estimatedMonthlySales", "currency"]
+};
+
+// Schema for Funding Milestones
+const fundingMilestonesSchema = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      phaseName: { type: Type.STRING },
+      description: { type: Type.STRING },
+      amount: { type: Type.NUMBER }
+    },
+    required: ["phaseName", "description", "amount"]
+  }
+};
+
+// Schema for Roadmap
+const roadmapSchema = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      phaseName: { type: Type.STRING },
+      duration: { type: Type.STRING },
+      steps: { type: Type.ARRAY, items: { type: Type.STRING } }
+    },
+    required: ["phaseName", "duration", "steps"]
+  }
+};
+
+// Schema for Pitch Deck
+const pitchDeckSchema = {
+  type: Type.OBJECT,
+  properties: {
+    slides: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          title: { type: Type.STRING },
+          subtitle: { type: Type.STRING },
+          bullets: { type: Type.ARRAY, items: { type: Type.STRING } }
+        },
+        required: ["title", "subtitle", "bullets"]
+      }
+    }
+  },
+  required: ["slides"]
+};
+
+// Schema for Credit Risk Report
+const creditRiskSchema = {
+  type: Type.OBJECT,
+  properties: {
+    score: { type: Type.NUMBER },
+    riskLevel: { type: Type.STRING },
+    dscr: { type: Type.NUMBER },
+    ltv: { type: Type.NUMBER },
+    strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+    weaknesses: { type: Type.ARRAY, items: { type: Type.STRING } },
+    stipulations: { type: Type.ARRAY, items: { type: Type.STRING } },
+    verdict: { type: Type.STRING },
+    maxLoanAmount: { type: Type.NUMBER }
+  },
+  required: ["score", "riskLevel", "dscr", "ltv", "strengths", "weaknesses", "stipulations", "verdict", "maxLoanAmount"]
 };
 
 // Schema for Simulation Event
-const simulationEventSchema: Schema = {
-    type: Type.OBJECT,
-    properties: {
-        scenario: { type: Type.STRING, description: "A situational crisis or opportunity description." },
-        choices: {
-            type: Type.ARRAY,
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    id: { type: Type.STRING, enum: ["a", "b", "c"] },
-                    label: { type: Type.STRING, description: "Short button label" },
-                    description: { type: Type.STRING, description: "Explanation of the choice risk/reward" },
-                    cashImpact: { type: Type.NUMBER, description: "Projected cash change (negative for cost, positive for gain)" },
-                    moraleImpact: { type: Type.NUMBER, description: "Projected morale change (-10 to +10)" },
-                    outcomeText: { type: Type.STRING, description: "What happens after this choice is made" }
-                },
-                required: ["id", "label", "description", "cashImpact", "moraleImpact", "outcomeText"]
-            }
-        }
-    },
-    required: ["scenario", "choices"]
+const simulationEventSchema = {
+  type: Type.OBJECT,
+  properties: {
+    scenario: { type: Type.STRING },
+    choices: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.STRING },
+          label: { type: Type.STRING },
+          description: { type: Type.STRING },
+          cashImpact: { type: Type.NUMBER },
+          moraleImpact: { type: Type.NUMBER },
+          outcomeText: { type: Type.STRING }
+        },
+        required: ["id", "label", "description", "cashImpact", "moraleImpact", "outcomeText"]
+      }
+    }
+  },
+  required: ["scenario", "choices"]
+};
+
+export const generateJuniorKits = async (industry: string, language: Language): Promise<JuniorKit[]> => {
+  try {
+    const langInstruction = language === 'am' 
+      ? "IMPORTANT: Provide all text content in Amharic language. Keep IDs and Difficulty keys in English."
+      : "Provide content in English.";
+
+    const prompt = `
+      Create 3 creative "Starter Kits" for a kid-friendly business simulation in the ${industry} industry.
+      Each kit must represent a specific machine-based business.
+      
+      Requirements for each Kit:
+      1. One "Easy", one "Medium", and one "Hard" difficulty kit.
+      2. Exactly 2 machines per kit with costs between $300 and $800.
+      3. Exactly 2 potential suppliers per kit.
+      4. Exactly 2 potential target markets per kit.
+      
+      Make the names fun and educational. Focus on machines like 3D printers, blenders, heat presses, or specialized tools.
+      
+      ${langInstruction}
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: juniorKitSchema,
+        temperature: 0.8,
+      }
+    });
+
+    if (response.text) {
+      return JSON.parse(response.text) as JuniorKit[];
+    }
+    return [];
+  } catch (error) {
+    console.error("Error generating junior kits:", error);
+    return [];
+  }
 };
 
 export const generateIdeas = async (industry: string, language: Language): Promise<BusinessIdea[]> => {
@@ -195,7 +290,7 @@ export const generateIdeas = async (industry: string, language: Language): Promi
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -251,7 +346,7 @@ export const generatePersonalizedIdeas = async (profile: UserProfile, language: 
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -302,7 +397,7 @@ export const generateBusinessDetails = async (idea: BusinessIdea, language: Lang
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -344,7 +439,7 @@ export const generateStressTest = async (idea: BusinessIdea, language: Language)
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -384,7 +479,7 @@ export const generateFinancialEstimates = async (idea: BusinessIdea, language: L
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -430,7 +525,7 @@ export const generateFundingMilestones = async (
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -483,7 +578,7 @@ export const generateRoadmap = async (idea: BusinessIdea, language: Language): P
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -509,7 +604,7 @@ export const findMachineSuppliers = async (machineName: string): Promise<Sourcin
     
     // IMPORTANT: Do NOT set responseMimeType or responseSchema when using Google Search Grounding.
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }],
@@ -566,7 +661,7 @@ export const generateCanvas = async (idea: BusinessIdea, language: Language): Pr
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -611,7 +706,7 @@ export const generatePitchDeck = async (idea: BusinessIdea, language: Language):
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-flash-preview',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -669,7 +764,7 @@ export const generateCreditRiskReport = async (
         `;
 
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-flash',
+            model: 'gemini-3-pro-preview',
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -723,7 +818,7 @@ export const generateSimulationEvent = async (
         `;
 
         const response = await ai.models.generateContent({
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3-flash-preview',
           contents: prompt,
           config: {
             responseMimeType: "application/json",
@@ -752,7 +847,7 @@ export const streamChat = async function* (
     const langInstruction = language === 'am' ? "IMPORTANT: Reply in Amharic language." : "Reply in English.";
 
     const chat = ai.chats.create({
-        model: 'gemini-2.5-flash-lite', // Low latency model
+        model: 'gemini-flash-lite-latest', // Low latency model
         history: history,
         config: {
             systemInstruction: `

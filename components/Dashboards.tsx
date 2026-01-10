@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, NeonText, LoadingScan, NeonModal } from './NeonUI';
 import { User, BusinessIdea, Industry, UserProfile, LoanApplication, CreditRiskReport, AnalyticsData, FundingMilestone, Language } from '../types';
@@ -1135,7 +1136,7 @@ export const LenderDashboard: React.FC<LenderDashboardProps> = ({ user, onAnalyz
                                 ) : (
                                     <div className="flex flex-col justify-center items-center">
                                         {!report ? (
-                                            <NeonButton color="yellow" onClick={handleAnalyze} disabled={loading} className="w-full h-full flex flex-col items-center justify-center gap-2">
+                                            <NeonButton color="blue" onClick={handleAnalyze} disabled={loading} className="w-full h-full flex flex-col items-center justify-center gap-2">
                                                 {loading ? (
                                                     <>
                                                         <div className="w-8 h-8 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
