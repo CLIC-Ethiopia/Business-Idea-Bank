@@ -4,8 +4,9 @@ import { BusinessIdea, BusinessCanvas, BusinessDetails, UserProfile, Language, S
 import { fetchMachineImage } from "./googleSearchService";
 import { JuniorKit } from "./juniorSimData";
 
-// Initialize Gemini API with the recommended pattern
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Initialize Gemini API with the recommended pattern and fallback
+const apiKey = process.env.API_KEY || '';
+const ai = new GoogleGenAI({ apiKey });
 
 // Schema for Junior Kits (Student Sim)
 const juniorKitSchema = {
