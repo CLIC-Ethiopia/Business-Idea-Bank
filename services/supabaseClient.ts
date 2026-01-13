@@ -1,6 +1,13 @@
+
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL || 'https://jxuemlrthnfwpiissxof.supabase.co';
-const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp4dWVtbHJ0aG5md3BpaXNzeG9mIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU2MDQyMjcsImV4cCI6MjA4MTE4MDIyN30.8BGGhKZdA-3VmwM6IpRHwjvYJV9zX90wpyd7SwgXTyE';
+// Fallback to placeholders to prevent the app from crashing immediately if .env is not set up.
+// The Supabase client throws an error if initialized with an empty string.
+const supabaseUrl = process.env.SUPABASE_URL || 'https://placeholder.supabase.co';
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY || 'placeholder';
+
+if (supabaseUrl === 'https://placeholder.supabase.co') {
+  console.warn('⚠️ Supabase credentials missing. App running in offline/demo mode. Check your .env file.');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);

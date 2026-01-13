@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { INDUSTRIES } from './constants';
 import { NeonCard, NeonButton, NeonInput, NeonTextArea, NeonSelect, LoadingScan, NeonModal } from './components/NeonUI';
@@ -179,6 +180,9 @@ const App: React.FC = () => {
       if (session) {
         handleUserSession(session.user);
       }
+    }).catch(err => {
+      console.warn("Supabase session check failed (offline/demo mode):", err);
+      setLoadingSession(false);
     });
 
     const {
@@ -499,8 +503,9 @@ const App: React.FC = () => {
         setIdeas(ideasWithVotes);
         setAppState(AppState.SELECT_IDEA);
       }
-    } catch (e) {
-      setError(t.errors.connection);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || t.errors.connection);
       setAppState(AppState.SELECT_INDUSTRY);
     }
   };
@@ -535,8 +540,9 @@ const App: React.FC = () => {
         setSelectedIndustry({ id: 'custom', name: t.industries['custom'], icon: '🎯' });
         setAppState(AppState.SELECT_IDEA);
       }
-    } catch (e) {
-      setError(t.errors.connection);
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || t.errors.connection);
       setAppState(AppState.USER_PROFILE);
     }
   };
@@ -1215,7 +1221,8 @@ const App: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
         {sortedIdeas.map((idea, idx) => {
-          const isSaved = savedIdeas.some(i => i.businessTitle === idea.businessTitle || i.id === idea.id);
+          // Strict check: IDs must match and not be undefined. Or fallback to strict title match if IDs missing.
+          const isSaved = savedIdeas.some(i => i.businessTitle === idea.businessTitle || (i.id && idea.id && i.id === idea.id));
           const uniqueKey = idea.id || `${idea.businessTitle.replace(/\s+/g, '')}-${idx}`;
           
           return (

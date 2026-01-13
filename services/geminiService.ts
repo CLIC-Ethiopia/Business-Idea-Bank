@@ -304,9 +304,14 @@ export const generateIdeas = async (industry: string, language: Language): Promi
       const ideas = JSON.parse(response.text) as BusinessIdea[];
       
       // Enhance ideas with real images from Google Search
-      const ideasWithImages = await Promise.all(ideas.map(async (idea) => {
+      const ideasWithImages = await Promise.all(ideas.map(async (idea, idx) => {
          const imageUrl = await fetchMachineImage(idea.machineName);
-         return { ...idea, imageUrl };
+         // Assign a temporary unique ID to prevent UI collisions
+         return { 
+             ...idea, 
+             id: `gen-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+             imageUrl 
+         };
       }));
 
       return ideasWithImages;
@@ -360,9 +365,14 @@ export const generatePersonalizedIdeas = async (profile: UserProfile, language: 
       const ideas = JSON.parse(response.text) as BusinessIdea[];
 
       // Enhance ideas with real images from Google Search
-      const ideasWithImages = await Promise.all(ideas.map(async (idea) => {
+      const ideasWithImages = await Promise.all(ideas.map(async (idea, idx) => {
          const imageUrl = await fetchMachineImage(idea.machineName);
-         return { ...idea, imageUrl };
+         // Assign a temporary unique ID to prevent UI collisions
+         return { 
+             ...idea, 
+             id: `pers-${Date.now()}-${idx}-${Math.floor(Math.random() * 1000)}`,
+             imageUrl 
+         };
       }));
 
       return ideasWithImages;

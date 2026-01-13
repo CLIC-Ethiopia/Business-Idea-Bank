@@ -1,3 +1,4 @@
+
 # NeonVentures - AI Business Idea Bank
 
 NeonVentures is a cyberpunk-themed intelligence platform designed to democratize access to manufacturing and service-based business models. By leveraging Google's Gemini AI and Supabase, it scans global markets to generate actionable, machine-based micro-business opportunities tailored to user profiles.
@@ -36,11 +37,20 @@ NeonVentures is a cyberpunk-themed intelligence platform designed to democratize
     ```
 
 3.  **Environment Variables**
-    Create a `.env` file in the root directory. You need keys for Google Gemini and Supabase.
+    Copy the example environment file and add your keys:
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Open `.env` and fill in your details:
     ```env
     API_KEY=your_google_gemini_api_key
     SUPABASE_URL=your_supabase_project_url
     SUPABASE_ANON_KEY=your_supabase_anon_key
+    
+    # Optional (for image search)
+    GOOGLE_SEARCH_API_KEY=your_search_key
+    GOOGLE_SEARCH_CX=your_search_cx_id
     ```
 
 4.  **Run Development Server**
